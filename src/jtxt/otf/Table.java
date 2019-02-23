@@ -1,0 +1,91 @@
+/* 
+ * Copyright 2019 Lane W. Surface
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package jtxt.otf;
+
+import jtxt.otf.OTFFontFileReader.OTFData;
+
+/**
+ * 
+ */
+public class Table {
+    public enum OTFDataType {
+        UINT8(8),
+        INT8(8),
+        UINT16(16),
+        INT16(16),
+        UINT24(24),
+        UINT32(32),
+        INT32(32),
+        FIXED(32),
+        FWORD(16),
+        UFWORD(16),
+        F2DOT14(16),
+        LONGDATETIME(64),
+        TAG(32),
+        OFFSET16(16),
+        OFFSET32(32);
+        
+        public final int bits;
+        
+        OTFDataType(int size) {
+            this.bits = size;
+        }
+        
+        public int getNumBytes() { return bits / 8; }
+        
+        public Object getDataAsJavaType(byte[] data) {
+            if (data.length != getNumBytes())
+                throw new IllegalArgumentException("The number of bytes "
+                                                   + "in the data array is "
+                                                   + "incompatible with this "
+                                                   + "type.");
+            
+            switch (this) {
+            case INT8:
+            case UINT8:
+                return data[0];
+            case INT16:
+            case UINT16:
+                return data[0]
+                       | data[1];
+            case UINT24:
+                return data[0]
+                       | data[1]
+                       | data[2];
+            case INT32:
+            case UINT32:
+                return data[0] << 24
+                       | data[1] << 16
+                       | data[2] << 8
+                       | data[3];
+            default:
+                return null;
+            }
+        }
+    }
+    
+    public static final OTFDataType[] OFFSET_TABLE_DESC = { OTFDataType.UINT32,
+                                                            OTFDataType.UINT16,
+                                                            OTFDataType.UINT16,
+                                                            OTFDataType.UINT16,
+                                                            OTFDataType.UINT16 };
+    
+    private OTFData[] data;
+    
+    public Table(OTFData[] data) {
+        this.data = data;
+    }
+}

@@ -151,42 +151,10 @@ public class OTFFontFileReader {
          *  2. Fix the problem with bytes in Java? being a different size than
          *     their size in the OTF file.
          */
-        Integer i = (Integer)INT32.getDataAsJavaType(new byte[] { 0,
-                                                                  0,
-                                                                  0,
-                                                                  (byte)128 });
+        int i = (int)INT32.getDataAsJavaType(new byte[] { 0,
+                                                          0,
+                                                          (byte)56,
+                                                          (byte)128 });
         System.out.println("i=" + i);
-    }
-    
-    public static void readTable(BufferedInputStream input,
-                                 String table) {
-        try {
-            String[] elems = table.split(";");
-            
-            String[] d = elems[0].split(",");
-            byte[] bytes = new byte[4];
-            input.read(bytes);
-            for (byte b : bytes) System.out.print((char)b);
-            System.out.println();
-            
-            for (int i = 1; i < elems.length; i++) {
-                String[] x = elems[i].split(",");
-                
-                printData(input,
-                          Integer.parseInt(x[0]) / 8,
-                          x[1]);
-            }
-        }
-        catch (IOException ie) { /* ... */ }
-    }
-    
-    public static void printData(BufferedInputStream input,
-                                 int numBytes,
-                                 String name) throws IOException {
-        byte[] bytes = new byte[numBytes];
-        input.read(bytes,
-                   0,
-                   numBytes);
-        System.out.println(name + ":" + Arrays.toString(bytes));
     }
 }

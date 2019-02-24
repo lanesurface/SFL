@@ -47,33 +47,21 @@ public class Table {
         public int getNumBytes() { return bits / 8; }
         
         public Object getDataAsJavaType(byte[] data) {
-            if (data.length != getNumBytes())
+            int len = data.length,
+                repr = 0;
+            
+            if (len != getNumBytes())
                 throw new IllegalArgumentException("The number of bytes "
                                                    + "in the data array is "
                                                    + "incompatible with this "
                                                    + "type.");
             
-            switch (this) {
-            case INT8:
-            case UINT8:
-                return data[0];
-            case INT16:
-            case UINT16:
-                return data[0]
-                       | data[1];
-            case UINT24:
-                return data[0]
-                       | data[1]
-                       | data[2];
-            case INT32:
-            case UINT32:
-                return data[0] << 24
-                       | data[1] << 16
-                       | data[2] << 8
-                       | data[3];
-            default:
-                return null;
-            }
+            for (int i = 0; i < len; i++)
+                repr |= (data[i] & 0xFF)
+                        << (len - i - 1)
+                        * 8;
+            
+            return repr;
         }
     }
     

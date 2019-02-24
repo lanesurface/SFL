@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package jtxt.otf;
+package jtxt.font.otf.loader;
+
+import java.time.ZonedDateTime;
 
 /**
  * 
@@ -30,7 +32,10 @@ public enum OTFDataType {
     FWORD(16),
     UFWORD(16),
     F2DOT14(16),
-    LONGDATETIME(64),
+    LONGDATETIME(64) {
+        @Override
+        public ZonedDateTime getDataAsJavaType(byte[] data) { return null; }
+    },
     TAG(32),
     OFFSET16(16),
     OFFSET32(32);

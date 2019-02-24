@@ -15,25 +15,24 @@
  */
 package jtxt.otf;
 
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.Arrays;
+import java.nio.charset.Charset;
 import java.util.List;
 
-import jtxt.otf.Table.OTFDataType;
-
-import static jtxt.otf.Table.OTFDataType.*;
+import static jtxt.otf.OTFDataType.*;
 
 /**
  * 
  */
 public class OTFFontFileReader {
+    /**
+     * 
+     */
     public static class OTFData {
         private final OTFDataType type;
         
@@ -42,6 +41,14 @@ public class OTFFontFileReader {
         public OTFData(OTFDataType type, byte[] data) {
             this.type = type;
             this.data = data;
+        }
+        
+        public OTFDataType getDataType() {
+            return type;
+        }
+        
+        public byte[] getRawData() {
+            return data;
         }
     }
     
@@ -79,7 +86,37 @@ public class OTFFontFileReader {
         }
         catch (IOException ioe) { /* ... */ }
         
-        Table offsetTable = readTable(0, Table.OFFSET_TABLE_DESC);
+        Table offsetTable = readTable(0, UINT32,   // sfntVersion
+                                         UINT16,   // numTables
+                                         UINT16,   // searchRange
+                                         UINT16,   // entrySelector
+                                         UINT16 ); // rangeShift
+        
+        int version = (int)offsetTable.getData(0);
+        System.out.format("sfntVersion=%d%n", version);
+        
+        int numTables = (int)offsetTable.getData(1);
+        System.out.format("numTables=%d%n", numTables);
+        
+        printTables(numTables);
+    }
+    
+    public void printTables(int numTables) {
+        // Print the table record entries.
+        for (int i = 0; i < numTables; i++) {
+            Table record = readTable(i * 4 * 4 + (4 + 2 * 4), TAG,
+                                                              UINT32,
+                                                              OFFSET32,
+                                                              UINT32);
+            System.out.println("--- TABLE " + i + " ---");
+            String tag = new String(record.getOTFData(0).data,
+                                    Charset.forName("US-ASCII"));
+            System.out.println(tag);
+            System.out.format("checksum=%d,%noffset=%d,%nlength=%d%n",
+                              (int)record.getData(1),
+                              (int)record.getData(2),
+                              (int)record.getData(3));
+        }
     }
     
     protected Table readTable(int offset, OTFDataType... types) {
@@ -102,35 +139,9 @@ public class OTFFontFileReader {
     
     public Table getTable(Tag tag) { return null; }
     
-    public static void main(String[] args) throws FileNotFoundException,
-                                                  IOException,
-                                                  URISyntaxException { 
-//        BufferedInputStream in = new BufferedInputStream(
-//            new FileInputStream(ClassLoader.getSystemResource("calibri.ttf")
-//                                           .getFile())
-//        );
-//        
-//        String offset = "32,sfntVersion;"
-//                        + "16,numTables;"
-//                        + "16,searchRange;"
-//                        + "16,entrySelector;"
-//                        + "16,rangeShift;";
-//        readTable(in, offset);
-//        
-//        String tableRecord = "32,tag;"
-//                             + "32,checksum;"
-//                             + "32,offset;"
-//                             + "32,length;";
-//        
-//        int numTableRecords = 22;
-//        for (int i = 0;
-//             i < numTableRecords;
-//             i++)
-//        {
-//            System.out.println("----- TABLE " + i + " -----");
-//            readTable(in, tableRecord);
-//        }
-        
+    public static void main(String[] args)
+        throws URISyntaxException
+    {   
         File file = new File(
             ClassLoader.getSystemResource("CALIBRI.TTF")
                        .toURI()

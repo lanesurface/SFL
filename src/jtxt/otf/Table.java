@@ -21,59 +21,20 @@ import jtxt.otf.OTFFontFileReader.OTFData;
  * 
  */
 public class Table {
-    public enum OTFDataType {
-        UINT8(8),
-        INT8(8),
-        UINT16(16),
-        INT16(16),
-        UINT24(24),
-        UINT32(32),
-        INT32(32),
-        FIXED(32),
-        FWORD(16),
-        UFWORD(16),
-        F2DOT14(16),
-        LONGDATETIME(64),
-        TAG(32),
-        OFFSET16(16),
-        OFFSET32(32);
-        
-        public final int bits;
-        
-        OTFDataType(int size) {
-            this.bits = size;
-        }
-        
-        public int getNumBytes() { return bits / 8; }
-        
-        public Object getDataAsJavaType(byte[] data) {
-            int len = data.length,
-                repr = 0;
-            
-            if (len != getNumBytes())
-                throw new IllegalArgumentException("The number of bytes "
-                                                   + "in the data array is "
-                                                   + "incompatible with this "
-                                                   + "type.");
-            
-            for (int i = 0; i < len; i++)
-                repr |= (data[i] & 0xFF)
-                        << (len - i - 1)
-                        * 8;
-            
-            return repr;
-        }
-    }
-    
-    public static final OTFDataType[] OFFSET_TABLE_DESC = { OTFDataType.UINT32,
-                                                            OTFDataType.UINT16,
-                                                            OTFDataType.UINT16,
-                                                            OTFDataType.UINT16,
-                                                            OTFDataType.UINT16 };
-    
     private OTFData[] data;
     
     public Table(OTFData[] data) {
         this.data = data;
+    }
+    
+    public OTFData getOTFData(int i) {
+        return data[i];
+    }
+    
+    public Object getData(int i) {
+        OTFData otfd = data[i];
+        
+        return otfd.getDataType()
+                   .getDataAsJavaType(otfd.getRawData());
     }
 }

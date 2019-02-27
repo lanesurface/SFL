@@ -15,11 +15,7 @@
  */
 package jtxt.font.otf.loader;
 
-import static jtxt.font.otf.loader.OTFDataType.INT16;
-import static jtxt.font.otf.loader.OTFDataType.INT32;
-import static jtxt.font.otf.loader.OTFDataType.OFFSET32;
-import static jtxt.font.otf.loader.OTFDataType.TAG;
-import static jtxt.font.otf.loader.OTFDataType.UINT32;
+import static jtxt.font.otf.loader.OTFDataType.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -125,6 +121,7 @@ public class OTFFontFileReader {
             buffer = raf.getChannel().map(FileChannel.MapMode.READ_ONLY,
                                           0,
                                           raf.length());
+            raf.close();
         }
         catch (IOException ioe) { /* ... */ }
         
@@ -143,50 +140,70 @@ public class OTFFontFileReader {
                             + (4 + 2 * 4));
             
             int tag = (int)(buffer.getLong() >> 32 & 0xFFFFFFFF),
-                toff = buffer.getInt(),
+                offset = buffer.getInt(),
                 length = buffer.getInt();
             
             System.out.println(getTagAsString(tag)
-                               + "\noffset=" + toff
+                               + "\noffset=" + offset
                                + "\nlength=" + length
                                + "\n---");
             
             addTableEntry(tag,
-                          toff,
+                          offset,
                           length);
         }
     }
     
     protected void addTableEntry(int tag,
-                                 int tableOff,
-                                 int tableLen) {
+                                 int tableOffset,
+                                 int tableLength) {
         TableDescriptor descriptor;
         switch (tag) {
         case glyf:
-            descriptor = new TableDescriptor(INT16,
-                                             INT16,
-                                             INT16,
-                                             INT16,
-                                             INT16);
+            descriptor = new TableDescriptor(INT16,  // numberOfContours
+                                             INT16,  // xMin
+                                             INT16,  // yMin
+                                             INT16,  // xMax
+                                             INT16); // yMax
+            break;
+        case head:
+            descriptor = new TableDescriptor(UINT16, // majorVersion
+                                             UINT16, // minorVersion
+                                             FIXED,  // fontRevision
+                                             UINT32, // checkSumAdjustment
+                                             UINT32, // magicNumber
+                                             UINT16, // flags
+                                             UINT16, // unitsPerEm
+                                             LONGDATETIME, // created
+                                             LONGDATETIME, // modified
+                                             INT16,  // xMin
+                                             INT16,  // yMin
+                                             INT16,  // xMax
+                                             INT16,  // yMax
+                                             UINT16, // macStyle
+                                             UINT16, // lowestRecPPEM
+                                             INT16,  // fontDirectionHint
+                                             INT16,  // indexToLocFormat
+                                             INT16); // glyphDataFormat
             break;
         default:
             /* 
-             * Either the tag isn't correct or the table type is not supported
-             * by this font loader; either way, return silently.
+             * The tag isn't correct or the table type is not supported by this
+             * font loader; either way, return silently.
              */
             return;
         }
         
         tables.put(tag, new Table(descriptor,
-                                  tableOff,
-                                  tableLen));
+                                  tableOffset,
+                                  tableLength));
     }
     
     public String getTagAsString(int tag) {
         byte[] bytes = { (byte)(tag >> 24 & 0xFF),
                          (byte)(tag >> 16 & 0xFF),
                          (byte)(tag >> 8 & 0xFF),
-                         (byte)(tag & 0xFF)};
+                         (byte)(tag & 0xFF) };
         
         return new String(bytes, Charset.forName("US-ASCII"));
     }

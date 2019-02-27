@@ -16,6 +16,7 @@
 package jtxt.font.otf.loader;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import jtxt.font.otf.loader.OTFFontFileReader.OTFData;
 
@@ -44,6 +45,11 @@ public class Table {
         
         public OTFDataType getDataTypeAt(int index) {
             return types[index];
+        }
+        
+        @Override
+        public String toString() {
+            return "TableDescriptor: " + Arrays.toString(types);
         }
     }
     

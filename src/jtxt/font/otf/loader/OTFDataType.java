@@ -16,6 +16,7 @@
 package jtxt.font.otf.loader;
 
 import java.time.ZonedDateTime;
+import java.util.Arrays;
 
 /**
  * 
@@ -64,5 +65,17 @@ public enum OTFDataType {
                     * 8;
         
         return repr;
+    }
+    
+    public OTFDataType[] array(int length) {
+        OTFDataType[] types = new OTFDataType[length];
+        /*
+         * Filling the types array with instances of `this` puts the constant
+         * which this method was called on into the array.
+         */
+        Arrays.fill(types,
+                    this);
+        
+        return types;
     }
 }

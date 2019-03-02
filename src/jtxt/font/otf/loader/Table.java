@@ -21,39 +21,62 @@ import java.util.Arrays;
 import jtxt.font.otf.loader.OTFFontFileReader.OTFData;
 
 /**
- * 
+ * A {@code Table} contains information about a particular aspect of the font,
+ * according to the tables which are outlined in the
+ * <a href="https://docs.microsoft.com/en-us/typography/opentype/spec/">
+ * OpenType specification</a>. An instance of this class does not need to
+ * be contain a layout which is in that specification; however, all tables
+ * which are defined by it can be loaded from an {@link OTFFontFileReader}.
  */
 public class Table {
     public static class TableDescriptor {
-        private OTFDataType[] types;
+        private OTFDataType[] layout;
         
         public TableDescriptor(OTFDataType... types) {
-            this.types = types;
+            this.layout = types;
+        }
+        
+        public TableDescriptor add(OTFDataType... types) {
+            OTFDataType[] layout = new OTFDataType[this.layout.length
+                                                   + types.length];
+            System.arraycopy(this.layout, 0, layout, 0, this.layout.length);
+            System.arraycopy(types,
+                             0,
+                             layout,
+                             this.layout.length,
+                             types.length);
+            
+            return new TableDescriptor(layout);
         }
         
         public int getNumTypes() {
-            return types.length;
+            return layout.length;
         }
         
         public int getLength() {
             int len = 0;
-            for (OTFDataType type : types)
+            for (OTFDataType type : layout)
                 len += type.getNumBytes();
             
             return len;
         }
         
         public OTFDataType getDataTypeAt(int index) {
-            return types[index];
+            return layout[index];
         }
         
         @Override
         public String toString() {
-            return "TableDescriptor: " + Arrays.toString(types);
+            return "TableDescriptor: " + Arrays.toString(layout);
         }
     }
     
-    public TableDescriptor descriptor;
+    /**
+     * The descriptor describes how the data within this table has been laid
+     * out. When the table is loaded into memory, the data is constructed
+     * from this information.
+     */
+    public final TableDescriptor descriptor;
     
     private final int offset,
                       length;
@@ -86,26 +109,27 @@ public class Table {
         return data;
     }
     
+    public int getOffsetAt(int index) {
+        // Return the offset in memory for the table entry at the given index.
+        int length = descriptor.getLength();
+        if (index >= length || index < 0)
+            throw new IndexOutOfBoundsException("The index must be a value in "
+                                                + "the range: [0, "
+                                                + length
+                                                + "].");
+        
+        int offset = this.offset;
+        for (int i = 0; i < index; i++)
+            offset += descriptor.getDataTypeAt(i)
+                                .getNumBytes();
+        
+        return offset;
+    }
+    
     @Override
     public String toString() {
         return String.format("offset=%d,%nlength=%d%n---",
                              offset,
                              length);
     }
-    
-    /* 
-     * TableDescriptor glyfDescriptor = new TableDescriptor(INT16,
-     *                                                      INT16,
-     *                                                      INT16,
-     *                                                      INT16,
-     *                                                      INT16);
-     * Table glyfTable = new Table(glyfDescriptor, offset, length);
-     * ...
-     * Table table = tables.get(tag);
-     * OTFData[] data = table.load(buffer);
-     * 
-     * for (int i = 0; i < data.length; i++)
-     *     table.descriptor.getDataTypeAt(i)
-     *                     .createCompatibleJavaType(data.getRawData());
-     */
 }

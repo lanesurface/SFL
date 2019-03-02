@@ -24,6 +24,7 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -52,6 +53,11 @@ public class OTFFontFileReader {
         
         public byte[] getRawData() {
             return data;
+        }
+        
+        @Override
+        public String toString() {
+            return Arrays.toString(data);
         }
     }
     
@@ -152,6 +158,9 @@ public class OTFFontFileReader {
                           offset,
                           length);
         }
+        
+        Table table = tables.get(glyf);
+        System.out.println(table.getOffsetAt(2));
     }
     
     protected void addTableEntry(int tag,

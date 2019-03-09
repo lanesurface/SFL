@@ -38,9 +38,9 @@ public class OTFFontFileReader {
      * 
      */
     public static class OTFData {
-        private final OTFDataType type;
+        final OTFDataType type;
         
-        private final byte[] data;
+        final byte[] data;
         
         public OTFData(OTFDataType type, byte[] data) {
             this.type = type;
@@ -110,7 +110,7 @@ public class OTFFontFileReader {
      * The buffer which contains all of the data that this font holds. This
      * data is transformed into a more suitable format and packaged into
      * {@code Table}s. These tables can be looked up with a {@code Tag},
-     * which serves as a unique ID.
+     * which serves as their unique ID.
      */
     private ByteBuffer buffer;
     
@@ -159,8 +159,21 @@ public class OTFFontFileReader {
                           length);
         }
         
-        Table table = tables.get(glyf);
-        System.out.println(table.getOffsetAt(2));
+        /*
+         * The layout of a table in memory is determined by its tag (for which
+         * the few useful ones are already defined). If a table is in the file,
+         * and the tag has an entry that's been defined, it will be added to
+         * the `tables` mapping. These tables can then be loaded from the
+         * buffer, and then the values in that table can be stored in a byte
+         * array. Certain metadata about this data is preserved in the `Table`
+         * class.
+         */
+        byte[] data = tables.get(glyf)
+                            .load(buffer)
+                            .readIntoArray(0,
+                                           4,
+                                           null);
+        System.out.println(Arrays.toString(data));
     }
     
     protected void addTableEntry(int tag,

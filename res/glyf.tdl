@@ -1,0 +1,10 @@
+# The glyf table describes the outlines of glyphs in the TrueType format. These
+# glyphs are indexed by their glyph id, and information about the offsets and
+# length of each glyph data block is available within that table.
+
+# Glyph Header
+INT16 numberOfContours,
+INT16 xMin,
+INT16 yMin,
+INT16 xMax,
+INT16 yMax;

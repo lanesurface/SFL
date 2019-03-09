@@ -81,6 +81,8 @@ public class Table {
     private final int offset,
                       length;
     
+    private OTFData[] data;
+    
     /* package-private */ Table(TableDescriptor descriptor,
                                 int offset,
                                 int length) {
@@ -89,7 +91,7 @@ public class Table {
         this.length = length;
     }
     
-    public OTFData[] load(ByteBuffer buffer) {
+    public Table load(ByteBuffer buffer) {
         int prev = buffer.position();
         buffer.position(offset);
         
@@ -106,7 +108,9 @@ public class Table {
                                   bytes);
         }
         
-        return data;
+        this.data = data;
+        
+        return this;
     }
     
     public int getOffsetAt(int index) {
@@ -116,7 +120,7 @@ public class Table {
             throw new IndexOutOfBoundsException("The index must be a value in "
                                                 + "the range: [0, "
                                                 + length
-                                                + "].");
+                                                + ").");
         
         int offset = this.offset;
         for (int i = 0; i < index; i++)
@@ -124,6 +128,47 @@ public class Table {
                                 .getNumBytes();
         
         return offset;
+    }
+    
+    /**
+     * <b>
+     * Note: The data for this table must be loaded before it can be read
+     * from memory.
+     * </b>
+     * 
+     * Read the specified number of bytes into the given byte array.
+     * 
+     * @param start The offset into this table which should be used to
+     *              determine the first byte that will be read into the array.
+     * @param end The last byte which should be read into the array.
+     * @param dest The array that these bytes will be stored within. The size
+     *             of the array doesn't matter; a new array with the same size
+     *             will be allocated anyway. This value may be null if this
+     *             method appears on the right-hand side of an assignment. The
+     *             length of the returned array will be
+     *             <code>start - end</code>.
+     *
+     * @return A byte array which is identical to <code>dest</code>, unless
+     *         dest is null.
+     * 
+     * @see Table#load(ByteBuffer)
+     */
+    public byte[] readIntoArray(int start,
+                                int end,
+                                byte[] dest) {
+        if (data == null) throw new IllegalStateException("The data for this "
+                                                          + "table must be "
+                                                          + "loaded before it "
+                                                          + "can be read.");
+        
+        dest = new byte[length];
+        
+        for (int i = start; i < dest.length; i++)
+            for (int li = 0;
+                li < data[i].type.getNumBytes();
+                li++) dest[i + li] = data[i].data[li];
+        
+        return dest;
     }
     
     @Override

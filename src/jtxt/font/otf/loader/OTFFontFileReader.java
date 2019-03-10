@@ -171,9 +171,14 @@ public class OTFFontFileReader {
                                                            ">"));
         System.out.println(entries);
         
-        float d = OTFDataType.getF2Dot14(new byte[] { (byte)0x70,
-                                                      (byte)0x00 });
-        System.out.println("f2.14=" + d);
+        byte[] f = new byte[] { (byte)0x70,
+                                (byte)0x00,
+                                (byte)0x7f,
+                                (byte)0xff };
+        float[] nums = OTFDataType.getF2Dot14(ByteBuffer.wrap(f),
+                                              0,
+                                              2);
+        System.out.println(Arrays.toString(nums));
         
         /*
          * The layout of a table in memory is determined by its tag (for which

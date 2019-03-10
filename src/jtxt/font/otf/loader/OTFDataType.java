@@ -49,7 +49,7 @@ public enum OTFDataType {
     
     public int getNumBytes() { return bits / 8; }
     
-    public Object getDataAsJavaType(byte[] data) {
+    /* package-private */ Object getDataAsJavaType(byte[] data) {
         int len = data.length,
             repr = 0;
         
@@ -77,5 +77,77 @@ public enum OTFDataType {
                     this);
         
         return types;
+    }
+    
+    private static long constructBits(byte[] data,
+                                      int bytes) {
+        if (bytes > data.length || data.length > Long.BYTES)
+            throw new IllegalArgumentException("The data cannot be properly "
+                                               + "converted to the requested "
+                                               + "type.");
+        
+        long repr = 0;
+        
+        for (int i = 0; i < data.length; i++)
+            repr |= (data[i] & 0xFF)
+                    << (data.length - i - 1)
+                    * 8;
+        
+        return repr;
+    }
+    
+    public static long getLong(byte[] data) {
+        return (long)constructBits(data,
+                                   Long.BYTES);
+    }
+    
+    public static int getInteger(byte[] data) {
+        return (int)constructBits(data,
+                                  Integer.BYTES);
+    }
+    
+    public static short getShort(byte[] data) {
+        return (short)constructBits(data,
+                                    Short.BYTES);
+    }
+    
+    public static byte getByte(byte[] data) {
+        return (byte)constructBits(data,
+                                   Byte.BYTES);
+    }
+    
+    public static float getF2Dot14(byte[] data) {
+        /*
+         * An f2.14 is a fixed-point decimal number which has two integer
+         * digits and fourteen decimal digits.
+         * 
+         * The fixed-point decimal is converted into a single-precision float-
+         * ing point number (which has 16 additional bits of accuracy that
+         * cannot be utilized--this is due to the size of floating point
+         * numbers in Java).
+         */
+        
+        int i = ~(data[0] >> 2) + 1;
+        // TODO: ???
+        
+        return createIEEEFloat(false,
+                               (byte)0b1000_0001,
+                               0b011_0000_0000_0000_0000_0000);
+    }
+    
+    /*
+     * Masks which are used to extract various components of the integer
+     * representation of an IEEE-754 floating-point number.
+     */
+    private static final int SIGN = 0x80000000,
+                             EXPONENT = 0x7F800000,
+                             MANTISSA = 0x007FFFFF;
+    
+    private static float createIEEEFloat(boolean negative,
+                                         byte exponent,
+                                         int mantissa) {
+        return Float.intBitsToFloat(negative ? 1 : 0 << 31
+                                    ^ exponent << 23
+                                    ^ mantissa & MANTISSA);
     }
 }

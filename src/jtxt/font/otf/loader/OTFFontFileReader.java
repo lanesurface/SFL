@@ -27,6 +27,10 @@ import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.ToIntFunction;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import jtxt.font.otf.loader.Table.TableDescriptor;
 
@@ -159,6 +163,17 @@ public class OTFFontFileReader {
                           length);
         }
         
+        String entries = tables.keySet()
+                               .stream()
+                               .map(this::getTagAsString)
+                               .collect(Collectors.joining(", ",
+                                                           "Valid tables: <",
+                                                           ">"));
+        System.out.println(entries);
+        
+        float d = OTFDataType.getF2Dot14(null);
+        System.out.println("f2.14=" + d);
+        
         /*
          * The layout of a table in memory is determined by its tag (for which
          * the few useful ones are already defined). If a table is in the file,
@@ -173,7 +188,6 @@ public class OTFFontFileReader {
                             .readIntoArray(0,
                                            4,
                                            null);
-        System.out.println(Arrays.toString(data));
     }
     
     protected void addTableEntry(int tag,
@@ -256,10 +270,10 @@ public class OTFFontFileReader {
          *  2. Fix the problem with bytes in Java? being a different size than
          *     their size in the OTF file.
          */
-        int i = (int)INT32.getDataAsJavaType(new byte[] { 0,
-                                                          0,
-                                                          (byte)56,
-                                                          (byte)128 });
+        int i = OTFDataType.getInteger(new byte[] { 0,
+                                                    0,
+                                                    (byte)56,
+                                                    (byte)128 });
         System.out.println("i=" + i);
     }
 }

@@ -147,7 +147,7 @@ public class Table {
      *             method appears on the right-hand side of an assignment. The
      *             length of the returned array will be
      *             <code>start - end</code>.
-     *
+     * 
      * @return A byte array which is identical to <code>dest</code>, unless
      *         dest is null.
      * 

@@ -17,6 +17,7 @@ package jtxt.font.otf.loader;
 
 import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * 
@@ -117,37 +118,17 @@ public enum OTFDataType {
     }
     
     public static float getF2Dot14(byte[] data) {
-        /*
-         * An f2.14 is a fixed-point decimal number which has two integer
-         * digits and fourteen decimal digits.
-         * 
-         * The fixed-point decimal is converted into a single-precision float-
-         * ing point number (which has 16 additional bits of accuracy that
-         * cannot be utilized--this is due to the size of floating point
-         * numbers in Java).
-         */
+        Objects.requireNonNull(data, "The byte[] must not be null.");
         
-        int i = ~(data[0] >> 2) + 1;
-        // TODO: ???
+        float sum = data[0] >> 6;
+        short f = (short)((data[0] & 0x3F)
+                          << 8
+                          ^ data[1] & 0xFF);
+        for (int b = 1; b <= 14; b++)
+            sum += ((f & 1 << 14 - b)
+                    >> 14
+                    - b) / Math.pow(2, b);
         
-        return createIEEEFloat(false,
-                               (byte)0b1000_0001,
-                               0b011_0000_0000_0000_0000_0000);
-    }
-    
-    /*
-     * Masks which are used to extract various components of the integer
-     * representation of an IEEE-754 floating-point number.
-     */
-    private static final int SIGN = 0x80000000,
-                             EXPONENT = 0x7F800000,
-                             MANTISSA = 0x007FFFFF;
-    
-    private static float createIEEEFloat(boolean negative,
-                                         byte exponent,
-                                         int mantissa) {
-        return Float.intBitsToFloat(negative ? 1 : 0 << 31
-                                    ^ exponent << 23
-                                    ^ mantissa & MANTISSA);
+        return sum;
     }
 }

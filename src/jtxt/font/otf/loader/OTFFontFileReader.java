@@ -171,7 +171,8 @@ public class OTFFontFileReader {
                                                            ">"));
         System.out.println(entries);
         
-        float d = OTFDataType.getF2Dot14(null);
+        float d = OTFDataType.getF2Dot14(new byte[] { (byte)0x70,
+                                                      (byte)0x00 });
         System.out.println("f2.14=" + d);
         
         /*

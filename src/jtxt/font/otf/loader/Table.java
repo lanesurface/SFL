@@ -18,7 +18,7 @@ package jtxt.font.otf.loader;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import jtxt.font.otf.loader.OTFFontFileReader.OTFData;
+import jtxt.font.otf.loader.OTFFileReader.OTFData;
 
 /**
  * A {@code Table} contains information about a particular aspect of the font,
@@ -26,7 +26,7 @@ import jtxt.font.otf.loader.OTFFontFileReader.OTFData;
  * <a href="https://docs.microsoft.com/en-us/typography/opentype/spec/">
  * OpenType specification</a>. An instance of this class does not need to
  * be contain a layout which is in that specification; however, all tables
- * which are defined by it can be loaded from an {@link OTFFontFileReader}.
+ * which are defined by it can be loaded from an {@link OTFFileReader}.
  */
 public class Table {
     public static class TableDescriptor {

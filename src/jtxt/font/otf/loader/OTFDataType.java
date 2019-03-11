@@ -131,12 +131,12 @@ public enum OTFDataType {
             int d1i = 2 * n,
                 d2i = d1i + 1;
             float sum = data[d1i] >> 6;
-            short f = (short)((data[d1i] & 0x3F)
-                              << 8
-                              ^ data[d2i]
-                              & 0xFF);
+            short decimal = (short)((data[d1i] & 0x3F)
+                                    << 8
+                                    ^ data[d2i]
+                                    & 0xFF);
             for (int b = 1; b <= 14; b++)
-                sum += ((f & 1 << 14 - b)
+                sum += ((decimal & 1 << 14 - b)
                         >> 14
                         - b) / Math.pow(2, b);
             

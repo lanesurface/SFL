@@ -37,7 +37,7 @@ import jtxt.font.otf.loader.Table.TableDescriptor;
 /**
  * 
  */
-public class OTFFontFileReader {
+public class OTFFileReader {
     /**
      * 
      */
@@ -125,7 +125,7 @@ public class OTFFontFileReader {
      */
     private Map<Integer, Table> tables;
     
-    public OTFFontFileReader(File file) {
+    public OTFFileReader(File file) {
         try {
             RandomAccessFile raf = new RandomAccessFile(file, "r");
             buffer = raf.getChannel().map(FileChannel.MapMode.READ_ONLY,
@@ -174,26 +174,13 @@ public class OTFFontFileReader {
         byte[] f = new byte[] { (byte)0x70,
                                 (byte)0x00,
                                 (byte)0x7f,
+                                (byte)0xff,
+                                (byte)0xff,
                                 (byte)0xff };
         float[] nums = OTFDataType.getF2Dot14(ByteBuffer.wrap(f),
                                               0,
-                                              2);
+                                              3);
         System.out.println(Arrays.toString(nums));
-        
-        /*
-         * The layout of a table in memory is determined by its tag (for which
-         * the few useful ones are already defined). If a table is in the file,
-         * and the tag has an entry that's been defined, it will be added to
-         * the `tables` mapping. These tables can then be loaded from the
-         * buffer, and then the values in that table can be stored in a byte
-         * array. Certain metadata about this data is preserved in the `Table`
-         * class.
-         */
-        byte[] data = tables.get(glyf)
-                            .load(buffer)
-                            .readIntoArray(0,
-                                           4,
-                                           null);
     }
     
     protected void addTableEntry(int tag,
@@ -261,7 +248,7 @@ public class OTFFontFileReader {
             ClassLoader.getSystemResource("CALIBRI.TTF")
                        .toURI()
         );
-        OTFFontFileReader otf = new OTFFontFileReader(file);
+        OTFFileReader otf = new OTFFileReader(file);
         /*
          * So we want to be able to easily convert between OTF types and Java
          * data types with the OTFDataType#getDataAsJavaType(byte[]) method.

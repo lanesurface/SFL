@@ -15,8 +15,6 @@
  */
 package jtxt.font.otf.loader;
 
-import static jtxt.font.otf.loader.OTFDataType.*;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -27,41 +25,34 @@ import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.ToIntFunction;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import jtxt.font.otf.loader.Table.TableDescriptor;
 
 /**
  * 
  */
 public class OTFFileReader {
     /**
-     * 
+     * Contains information about a table in the font file. Namely, this class
+     * aids in mapping table tags to their location in memory.
      */
-    public static class OTFData {
-        final OTFDataType type;
+    static final class TableRecord {
+        public final int offset;
+        public final int length;
         
-        final byte[] data;
-        
-        public OTFData(OTFDataType type, byte[] data) {
-            this.type = type;
-            this.data = data;
+        public TableRecord(int offset, int length) {
+            this.offset = offset;
+            this.length = length;
         }
-        
-        public Object createCompatibleData() {
-            return type.getDataAsJavaType(data);
-        }
-        
-        public byte[] getRawData() {
-            return data;
-        }
-        
-        @Override
-        public String toString() {
-            return Arrays.toString(data);
+    }
+    
+    private static class DataConverter {
+        public static String getTagAsString(int tag) {
+            byte[] bytes = { (byte)(tag >> 24 & 0xFF),
+                             (byte)(tag >> 16 & 0xFF),
+                             (byte)(tag >> 8 & 0xFF),
+                             (byte)(tag & 0xFF) };
+            
+            return new String(bytes, Charset.forName("US-ASCII"));
         }
     }
     
@@ -91,6 +82,11 @@ public class OTFFileReader {
                             MERG = 0x4D_45_52_47,
                             MVAR = 0x4D_56_41_52,
                             OS_2 = 0x4F_53_5F_32,
+                            STAT = 0x53_54_41_54,
+                            SVG  = 0x53_56_47_20,
+                            VDMX = 0x56_44_4D_58,
+                            VORG = 0x56_4F_52_47,
+                            VVAR = 0x56_56_41_52,
                             avar = 0x61_76_61_72,
                             cmap = 0x63_6D_61_70,
                             cvar = 0x63_76_61_72,
@@ -108,7 +104,15 @@ public class OTFFileReader {
                             loca = 0x6C_6F_63_61,
                             maxp = 0x6D_61_78_70,
                             meta = 0x6D_65_74_61,
-                            name = 0x6E_61_6D_65;
+                            name = 0x6E_61_6D_65,
+                            pclt = 0x70_63_6C_74,
+                            post = 0x70_6F_73_74,
+                            prep = 0x70_72_65_70,
+                            sbix = 0x73_62_69_78,
+                            vhea = 0x76_68_65_61,
+                            vmtx = 0x76_6D_74_78;
+    
+    private static final int TABLE_RECORD_OFFSET = 4 + 2 * 4;
     
     /**
      * The buffer which contains all of the data that this font holds. This
@@ -123,7 +127,7 @@ public class OTFFileReader {
      * respective {@code Table} in memory; a tag associates a specific Table's
      * offset with a four-byte ASCII identifier.
      */
-    private Map<Integer, Table> tables;
+    private Map<Integer, TableRecord> tables;
     
     public OTFFileReader(File file) {
         try {
@@ -138,38 +142,8 @@ public class OTFFileReader {
         tables = new HashMap<>();
         /* sfntVersion */ buffer.getInt();
         int numTables = buffer.getShort();
-        System.out.format("numTables=%d%n", numTables);
-        
-        TableDescriptor recordDesc = new TableDescriptor(TAG,
-                                                         UINT32,
-                                                         OFFSET32,
-                                                         UINT32);
-        for (int i = 0; i < numTables; i++) {
-            buffer.position(recordDesc.getLength()
-                            * i
-                            + (4 + 2 * 4));
-            
-            int tag = (int)(buffer.getLong() >> 32 & 0xFFFFFFFF),
-                offset = buffer.getInt(),
-                length = buffer.getInt();
-            
-            System.out.println(getTagAsString(tag)
-                               + "\noffset=" + offset
-                               + "\nlength=" + length
-                               + "\n---");
-            
-            addTableEntry(tag,
-                          offset,
-                          length);
-        }
-        
-        String entries = tables.keySet()
-                               .stream()
-                               .map(this::getTagAsString)
-                               .collect(Collectors.joining(", ",
-                                                           "Valid tables: <",
-                                                           ">"));
-        System.out.println(entries);
+        mapTableRecords(TABLE_RECORD_OFFSET,
+                        numTables);
         
         byte[] f = new byte[] { (byte)0x70,
                                 (byte)0x00,
@@ -183,63 +157,28 @@ public class OTFFileReader {
         System.out.println(Arrays.toString(nums));
     }
     
-    protected void addTableEntry(int tag,
-                                 int tableOffset,
-                                 int tableLength) {
-        TableDescriptor descriptor;
-        switch (tag) {
-        case glyf:
-            descriptor = new TableDescriptor(INT16,  // numberOfContours
-                                             INT16,  // xMin
-                                             INT16,  // yMin
-                                             INT16,  // xMax
-                                             INT16); // yMax
-            break;
-        case head:
-            descriptor = new TableDescriptor(UINT16, // majorVersion
-                                             UINT16, // minorVersion
-                                             FIXED,  // fontRevision
-                                             UINT32, // checkSumAdjustment
-                                             UINT32, // magicNumber
-                                             UINT16, // flags
-                                             UINT16, // unitsPerEm
-                                             LONGDATETIME, // created
-                                             LONGDATETIME, // modified
-                                             INT16,  // xMin
-                                             INT16,  // yMin
-                                             INT16,  // xMax
-                                             INT16,  // yMax
-                                             UINT16, // macStyle
-                                             UINT16, // lowestRecPPEM
-                                             INT16,  // fontDirectionHint
-                                             INT16,  // indexToLocFormat
-                                             INT16); // glyphDataFormat
-            break;
-        default:
-            /* 
-             * The tag isn't correct or the table type is not supported by this
-             * font loader; either way, return silently.
+    private TableRecord[] mapTableRecords(int offset,
+                                          int numTables) {
+        TableRecord[] recordEntries = new TableRecord[numTables];
+        
+        buffer.position(offset);
+        for (int i = 0; i < numTables; i++) {
+            /*
+             * TAG      tag
+             * UINT32   checksum
+             * OFFSET32 offset
+             * UINT32   length 
              */
-            return;
+            int tag = (int)(buffer.getLong()
+                            >> 32
+                            & 0xFFFFFFFF);
+            
+            tables.put(tag, new TableRecord(buffer.getInt(),
+                                            buffer.getInt()));
         }
         
-        tables.put(tag, new Table(descriptor,
-                                  tableOffset,
-                                  tableLength));
+        return recordEntries;
     }
-    
-    public String getTagAsString(int tag) {
-        byte[] bytes = { (byte)(tag >> 24 & 0xFF),
-                         (byte)(tag >> 16 & 0xFF),
-                         (byte)(tag >> 8 & 0xFF),
-                         (byte)(tag & 0xFF) };
-        
-        return new String(bytes, Charset.forName("US-ASCII"));
-    }
-    
-    public static class TableDNEx extends IllegalArgumentException { }
-    
-    public Table getTable(int tag) throws TableDNEx { return null; }
     
     public static void main(String[] args)
         throws URISyntaxException
@@ -249,24 +188,14 @@ public class OTFFileReader {
                        .toURI()
         );
         OTFFileReader otf = new OTFFileReader(file);
-        /*
-         * So we want to be able to easily convert between OTF types and Java
-         * data types with the OTFDataType#getDataAsJavaType(byte[]) method.
-         * 
-         * Right now, this method returns -incorrect- values for the byte array
-         * and doesn't support all data types which have been defined in this
-         * enumeration.
-         * 
-         *  1. I need to use constant class bodies to override this method,
-         *     and have the default behavior be something reasonable (probably
-         *     related to byte[] -> int conversion).
-         *  2. Fix the problem with bytes in Java? being a different size than
-         *     their size in the OTF file.
-         */
-        int i = OTFDataType.getInteger(new byte[] { 0,
-                                                    0,
-                                                    (byte)56,
-                                                    (byte)128 });
-        System.out.println("i=" + i);
+        
+        String entries= otf.tables
+                           .keySet()
+                           .stream()
+                           .map(DataConverter::getTagAsString)
+                           .collect(Collectors.joining(", ",
+                                                       "Tables: <",
+                                                       ">"));
+        System.out.println(entries);
     }
 }

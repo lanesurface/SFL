@@ -15,6 +15,8 @@
  */
 package jtxt.font.otf.loader;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.nio.ByteBuffer;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
@@ -97,52 +99,5 @@ public enum OTFDataType {
         return repr;
     }
     
-    public static long getLong(byte[] data) {
-        return (long)constructBits(data,
-                                   Long.BYTES);
-    }
-    
-    public static int getInteger(byte[] data) {
-        return (int)constructBits(data,
-                                  Integer.BYTES);
-    }
-    
-    public static short getShort(byte[] data) {
-        return (short)constructBits(data,
-                                    Short.BYTES);
-    }
-    
-    public static byte getByte(byte[] data) {
-        return (byte)constructBits(data,
-                                   Byte.BYTES);
-    }
-    
-    public static float[] getF2Dot14(ByteBuffer source,
-                                     int offset,
-                                     int count) {
-        int bytesToRead = 2 * count;
-        byte[] data = new byte[bytesToRead];
-        source.get(data,
-                   offset,
-                   bytesToRead);
-        
-        float[] nums = new float[count];
-        for (int n = 0; n < count; n++) {
-            int d1i = 2 * n,
-                d2i = d1i + 1;
-            float sum = data[d1i] >> 6;
-            short decimal = (short)((data[d1i] & 0x3F)
-                                    << 8
-                                    ^ data[d2i]
-                                    & 0xFF);
-            for (int b = 1; b <= 14; b++)
-                sum += ((decimal & 1 << 14 - b)
-                        >> 14
-                        - b) / Math.pow(2, b);
-            
-            nums[n] = sum;
-        }
-        
-        return nums;
-    }
+
 }

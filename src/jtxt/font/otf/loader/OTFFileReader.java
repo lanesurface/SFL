@@ -15,6 +15,9 @@
  */
 package jtxt.font.otf.loader;
 
+import jtxt.font.otf.CharacterMapper;
+import jtxt.font.otf.OpenTypeFont;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -22,6 +25,7 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -53,6 +57,35 @@ public class OTFFileReader {
                              (byte)(tag & 0xFF) };
             
             return new String(bytes, Charset.forName("US-ASCII"));
+        }
+
+        public static float[] getF2Dot14(ByteBuffer source,
+                                         int offset,
+                                         int count) {
+            int bytesToRead = 2 * count;
+            byte[] data = new byte[bytesToRead];
+            source.get(data,
+                       offset,
+                       bytesToRead);
+
+            float[] nums = new float[count];
+            for (int n = 0; n < count; n++) {
+                int d1i = 2 * n,
+                        d2i = d1i + 1;
+                float sum = data[d1i] >> 6;
+                short decimal = (short)((data[d1i] & 0x3F)
+                        << 8
+                        ^ data[d2i]
+                        & 0xFF);
+                for (int b = 1; b <= 14; b++)
+                    sum += ((decimal & 1 << 14 - b)
+                            >> 14
+                            - b) / Math.pow(2, b);
+
+                nums[n] = sum;
+            }
+
+            return nums;
         }
     }
     
@@ -151,14 +184,27 @@ public class OTFFileReader {
                                 (byte)0xff,
                                 (byte)0xff,
                                 (byte)0xff };
-        float[] nums = OTFDataType.getF2Dot14(ByteBuffer.wrap(f),
-                                              0,
-                                              3);
+        float[] nums = DataConverter.getF2Dot14(ByteBuffer.wrap(f),
+                                                0,
+                                                3);
         System.out.println(Arrays.toString(nums));
+        
+        createCharacterMapper();
     }
     
-    private TableRecord[] mapTableRecords(int offset,
-                                          int numTables) {
+    public CharacterMapper createCharacterMapper() {
+        /* 
+         * TODO: Return a character mapper which supports the characteristics
+         *       of this font. (For example, a different character mapper will
+         *       need to be constructed if this font supports features and the
+         *       client requests that they be enabled.)
+         */
+        
+        return new DefaultOTCMap(buffer,
+                                 tables.get(cmap).offset);
+    }
+    
+    private TableRecord[] mapTableRecords(int offset, int numTables) {
         TableRecord[] recordEntries = new TableRecord[numTables];
         
         buffer.position(offset);
@@ -172,7 +218,7 @@ public class OTFFileReader {
             int tag = (int)(buffer.getLong()
                             >> 32
                             & 0xFFFFFFFF);
-            
+
             tables.put(tag, new TableRecord(buffer.getInt(),
                                             buffer.getInt()));
         }

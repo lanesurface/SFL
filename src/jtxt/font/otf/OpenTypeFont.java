@@ -50,12 +50,14 @@ public class OpenTypeFont {
     
     public static class OpenTypeFace implements RasterFont,
                                                 VectorFont {
+        private final OpenTypeFont masterFont;
         private final int size;
         private final int renderAttribs;
         
         private OpenTypeFace(OpenTypeFont masterFont,
                              int size,
                              int renderAttribs) {
+            this.masterFont = masterFont;
             this.size = size;
             this.renderAttribs = renderAttribs;
         }

@@ -15,8 +15,7 @@
  */
 package jtxt.font.otf.loader;
 
-import jtxt.font.otf.CharacterMapper;
-import jtxt.font.otf.OpenTypeFont;
+import static jtxt.font.otf.CharacterMapper.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,11 +24,12 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import jtxt.font.otf.CharacterMapper;
 
 /**
  * 
@@ -201,7 +201,9 @@ public class OTFFileReader {
          */
         
         return new DefaultOTCMap(buffer,
-                                 tables.get(cmap).offset);
+                                 tables.get(cmap).offset,
+                                 PLATFORM_WINDOWS,
+                                 PLATFORM_WINDOWS_UNICODE_BMP);
     }
     
     private TableRecord[] mapTableRecords(int offset, int numTables) {

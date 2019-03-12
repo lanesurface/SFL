@@ -16,9 +16,7 @@
 package jtxt.font.otf.loader;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.util.Arrays;
-import java.util.Map;
 
 import jtxt.font.otf.CharacterMapper;
 
@@ -57,15 +55,39 @@ public class DefaultOTCMap implements CharacterMapper {
     
     private EncodingRecord[] records;
     
+    /**
+     * Creates and initializes the {@code CharacterMapper} for an OpenType
+     * font. The buffer should be the same buffer that the font was loaded from
+     * (i.e., the buffer returned from creating a new {@code OTFFileReader}).
+     * The offset should be the location which is given in the table records
+     * at the beginning of the font file. (This means that the offset is an
+     * absolute position in memory.) Platform and encoding IDs specify
+     * platform-specific behavior for this character mapper, according to the
+     * constraints given in the OpenType specification. The platforms and
+     * encodings supported by this character mapper are the constants which
+     * this file defines, prefixed with <code>PLATFORM_...</code>.
+     * 
+     * @param buffer
+     * @param offset
+     * @param platformId
+     * @param encodingId
+     * 
+     * @throws UnsupportedEncodingScheme
+     */
     /* package-private */ DefaultOTCMap(ByteBuffer buffer,
                                         int offset,
-                                        Charset charset) {
+                                        int platformId,
+                                        int encodingId)
+       throws UnsupportedEncodingScheme
+{
+        if (platformId < 0 || platformId > 4)
+            throw new IllegalArgumentException("Unsupported platform ID "
+                                               + platformId);
+        
         this.buffer = buffer;
         this.offset = offset;
-        
-        // These will be set appropriately for the charset that has been given.
-        this.platformId = 0;
-        this.format = 0;
+        this.platformId = platformId;
+        this.format = encodingId;
         
         buffer.position(offset);
         /* version */ buffer.getShort();

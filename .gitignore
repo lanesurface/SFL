@@ -1,4 +1,15 @@
+# Eclipse
 .classpath
+
 .project
+
 bin/
+
 .settings/
+
+#IntelliJ
+.idea/
+*.iml
+
+# OpenType Specification
+spec.pdf

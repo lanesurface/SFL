@@ -29,7 +29,20 @@ public interface CharacterMapper {
      * a feature flag.
      */
     int NO_FEATURES = 0;
-    
+
+    // IDs specified for each platform in the OTF specification.
+    int PLATFORM_UNICODE = 0,
+        PLATFORM_OS_X = 1,
+        PLATFORM_WINDOWS = 3,
+        PLATFORM_CUSTOM = 4;
+
+    // The subset of encodings which are supported by this character mapper.
+    int PLATFORM_UNICODE_ID = 5,
+        PLATFORM_OS_X_ID = 0,
+        PLATFORM_WINDOWS_SYMBOL_ID = 0,
+        PLATFORM_WINDOWS_UNICODE_BMP = 1,
+        PLATFORM_WINDOWS_UNICODE_FULL = 10;
+
     /**
      * For the character given, this method will return the offset for the glyph
      * in memory, using the character encoding scheme which has been specified
@@ -57,7 +70,6 @@ public interface CharacterMapper {
      *         glyf table to find the absolute position of this character in
      *         memory.
      */
-    @SuppressWarnings("unused")
     int getGlyphOffset(int character,
                        int features);
 }

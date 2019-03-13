@@ -40,8 +40,8 @@ public class OTFFileReader {
      * aids in mapping table tags to their location in memory.
      */
     static final class TableRecord {
-        public final int offset;
-        public final int length;
+        final int offset;
+        final int length;
         
         public TableRecord(int offset, int length) {
             this.offset = offset;
@@ -49,7 +49,7 @@ public class OTFFileReader {
         }
     }
     
-    private static class DataConverter {
+    /* package-private */ static class DataConverter {
         public static String getTagAsString(int tag) {
             byte[] bytes = { (byte)(tag >> 24 & 0xFF),
                              (byte)(tag >> 16 & 0xFF),
@@ -71,12 +71,12 @@ public class OTFFileReader {
             float[] nums = new float[count];
             for (int n = 0; n < count; n++) {
                 int d1i = 2 * n,
-                        d2i = d1i + 1;
+                          d2i = d1i + 1;
                 float sum = data[d1i] >> 6;
                 short decimal = (short)((data[d1i] & 0x3F)
-                        << 8
-                        ^ data[d2i]
-                        & 0xFF);
+                                        << 8
+                                        ^ data[d2i]
+                                        & 0xFF);
                 for (int b = 1; b <= 14; b++)
                     sum += ((decimal & 1 << 14 - b)
                             >> 14
@@ -200,10 +200,10 @@ public class OTFFileReader {
          *       client requests that they be enabled.)
          */
         
-        return new DefaultOTCMap(buffer,
+        return new DefaultOTCMap(buffer.duplicate(),
                                  tables.get(cmap).offset,
-                                 PLATFORM_WINDOWS,
-                                 PLATFORM_WINDOWS_UNICODE_BMP);
+                                 PLATFORM_OS_X,
+                                 PLATFORM_OS_X_ID);
     }
     
     private TableRecord[] mapTableRecords(int offset, int numTables) {

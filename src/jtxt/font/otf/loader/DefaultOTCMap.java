@@ -27,7 +27,7 @@ public class DefaultOTCMap implements CharacterMapper {
     private final ByteBuffer buffer;
     private final int offset;
     private final int platformId;
-    private final int format;
+    private final int encodingId;
     
     protected static final class EncodingRecord {
         protected short platformId;
@@ -54,6 +54,9 @@ public class DefaultOTCMap implements CharacterMapper {
     }
     
     private EncodingRecord[] records;
+    private final int recordIndex;
+    private int format;
+    private byte[] offsets;
     
     /**
      * Creates and initializes the {@code CharacterMapper} for an OpenType
@@ -87,22 +90,65 @@ public class DefaultOTCMap implements CharacterMapper {
         this.buffer = buffer;
         this.offset = offset;
         this.platformId = platformId;
-        this.format = encodingId;
+        this.encodingId = encodingId;
         
         buffer.position(offset);
         /* version */ buffer.getShort();
         short numTables = buffer.getShort();
         records = new EncodingRecord[numTables];
-        for (int i = 0; i < numTables; i++)
-            records[i] = new EncodingRecord(buffer.getShort(),
-                                            buffer.getShort(),
+        int ri = -1;
+        for (int i = 0; i < numTables; i++) {
+            /* 
+             * Platform and encoding IDs for this record, named in such a way
+             * as to not conflict with the already existing local variables in
+             * this constructor.
+             */
+            short pId = buffer.getShort(),
+                  eId = buffer.getShort();
+            records[i] = new EncodingRecord(pId,
+                                            eId,
                                             buffer.getInt());
-        System.out.println(Arrays.toString(records));
+            if (pId == platformId && eId == encodingId) ri = i;
+        }
+        if (ri < 0)
+            throw new UnsupportedEncodingScheme("The provided encoding ID was "
+                                                + "not found in this font.");
+        recordIndex = ri;
+        
+        buffer.position(offset + records[recordIndex].offset);
+        format = buffer.getShort();
+        populateCMap(format);
+    }
+    
+    private void populateCMap(int format) {
+        switch (format) {
+        case 0:
+            int length = buffer.getShort();
+            /* language */ buffer.getShort();
+            offsets = new byte[256];
+            buffer.get(offsets,
+                       0,
+                       256);
+            System.out.format("length=%d,%noffsets=%s%n",
+                              length,
+                              Arrays.toString(offsets));
+            
+            break;
+        case 4:
+            // TODO
+            
+            break;
+        default:
+            break;
+        }
     }
     
     @Override
     public int getGlyphOffset(int character, int features) {
-        // TODO
-        return 0; // .notdef
+        if (character >= 0 && character < offsets.length)
+            return offsets[character];
+        
+        // Return index for the `.notdef` character.
+        return 0;
     }
 }

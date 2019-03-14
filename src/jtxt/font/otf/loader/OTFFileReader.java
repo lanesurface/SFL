@@ -15,7 +15,8 @@
  */
 package jtxt.font.otf.loader;
 
-import static jtxt.font.otf.CharacterMapper.*;
+import static jtxt.font.otf.CharacterMapper.PLATFORM_WINDOWS;
+import static jtxt.font.otf.CharacterMapper.PLATFORM_WINDOWS_UNICODE_BMP;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,9 +25,13 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
+import java.nio.file.Path;
+import java.nio.file.WatchKey;
+import java.nio.file.WatchService;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import jtxt.font.otf.CharacterMapper;
@@ -199,11 +204,13 @@ public class OTFFileReader {
          *       need to be constructed if this font supports features and the
          *       client requests that they be enabled.)
          */
+        ByteBuffer buffer = this.buffer.duplicate();
+        int offset = tables.get(cmap).offset;
         
-        return new DefaultOTCMap(buffer.duplicate(),
-                                 tables.get(cmap).offset,
-                                 PLATFORM_OS_X,
-                                 PLATFORM_OS_X_ID);
+        return new DefaultOTCMap(buffer,
+                                 offset,
+                                 PLATFORM_WINDOWS,
+                                 PLATFORM_WINDOWS_UNICODE_BMP);
     }
     
     private TableRecord[] mapTableRecords(int offset, int numTables) {
@@ -237,13 +244,13 @@ public class OTFFileReader {
         );
         OTFFileReader otf = new OTFFileReader(file);
         
-        String entries= otf.tables
-                           .keySet()
-                           .stream()
-                           .map(DataConverter::getTagAsString)
-                           .collect(Collectors.joining(", ",
-                                                       "Tables: <",
-                                                       ">"));
+        String entries = otf.tables
+                            .keySet()
+                            .stream()
+                            .map(DataConverter::getTagAsString)
+                            .collect(Collectors.joining(", ",
+                                                        "Tables: <",
+                                                        ">"));
         System.out.println(entries);
     }
 }

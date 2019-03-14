@@ -16,7 +16,6 @@
 package jtxt.font.otf.loader;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 
 import jtxt.font.otf.CharacterMapper;
 
@@ -53,10 +52,64 @@ public class DefaultOTCMap implements CharacterMapper {
         }
     }
     
+    /**
+     * Determines the identifier for the given character. The ID returned by a
+     * {@code GlyphIndexer} can be used to lookup the address in the
+     * <code>loca</code> table.
+     */
+    protected static abstract class GlyphIndexer {
+        protected final ByteBuffer buffer;
+        protected final int offset;
+        protected final int length;
+        
+        protected GlyphIndexer(ByteBuffer buffer,
+                               int offset,
+                               int length) {
+            this.buffer = buffer;
+            this.offset = offset;
+            this.length = length;
+        }
+        
+        public abstract int getGlyphId(int character);
+    }
+    
+    private static class ByteIndexer extends GlyphIndexer {
+        private byte[] indices;
+        
+        private ByteIndexer(ByteBuffer buffer,
+                            int offset,
+                            int length) {
+            super(buffer, offset, length);
+            indices = new byte[256];
+            buffer.get(indices);
+        }
+        
+        @Override
+        public int getGlyphId(int character) {
+            if (character < 0 || character >= 256) return 0;
+            
+            return indices[character];
+        }
+    }
+    
+    
+    private static class SegmentDeltaIndexer extends GlyphIndexer {
+        private short[] indices;
+        
+        private SegmentDeltaIndexer(ByteBuffer buffer,
+                                    int offset,
+                                    int length) {
+            super(buffer, offset, length);
+        }
+        
+        @Override
+        public int getGlyphId(int character) { return 0; }
+    }
+    
+    private GlyphIndexer[] indexers;
     private EncodingRecord[] records;
     private final int recordIndex;
     private int format;
-    private byte[] offsets;
     
     /**
      * Creates and initializes the {@code CharacterMapper} for an OpenType
@@ -117,38 +170,34 @@ public class DefaultOTCMap implements CharacterMapper {
         
         buffer.position(offset + records[recordIndex].offset);
         format = buffer.getShort();
-        populateCMap(format);
+        initializeCharacterIndexer(format);
     }
     
-    private void populateCMap(int format) {
+    private GlyphIndexer initializeCharacterIndexer(int format) {
+        System.out.println("offset="
+                           + offset
+                           + "\nformat="
+                           + format);
+        
+        int length = buffer.getShort();
+        /* language */ buffer.getShort();
+        ByteBuffer buffer = this.buffer.duplicate();
         switch (format) {
         case 0:
-            int length = buffer.getShort();
-            /* language */ buffer.getShort();
-            offsets = new byte[256];
-            buffer.get(offsets,
-                       0,
-                       256);
-            System.out.format("length=%d,%noffsets=%s%n",
-                              length,
-                              Arrays.toString(offsets));
-            
-            break;
+            return new ByteIndexer(buffer,
+                                   offset,
+                                   length);
         case 4:
-            // TODO
-            
-            break;
+            return new SegmentDeltaIndexer(buffer,
+                                           offset,
+                                           length);
         default:
-            break;
+            return null; // TODO: Need default impl.
         }
     }
     
     @Override
     public int getGlyphOffset(int character, int features) {
-        if (character >= 0 && character < offsets.length)
-            return offsets[character];
-        
-        // Return index for the `.notdef` character.
         return 0;
     }
 }

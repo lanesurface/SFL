@@ -16,8 +16,8 @@
 package jtxt.font.otf;
 
 /**
- * For a given character, a {@code CharacterMapper} determines the index in the
- * <code>glyf</code> table that the given glyph data is contained at.
+ * Determines the address within the <code>glyf</code> table that the data for
+ * a given glyph is contained at.
  */
 public interface CharacterMapper {
     /**

@@ -16,6 +16,7 @@
 package jtxt.font.otf.loader;
 
 import java.nio.ByteBuffer;
+import java.nio.ShortBuffer;
 
 import jtxt.font.otf.CharacterMapper;
 
@@ -23,11 +24,6 @@ import jtxt.font.otf.CharacterMapper;
  * 
  */
 public class DefaultOTCMap implements CharacterMapper {
-    private final ByteBuffer buffer;
-    private final int offset;
-    private final int platformId;
-    private final int encodingId;
-    
     protected static final class EncodingRecord {
         protected short platformId;
         protected short encodingId;
@@ -39,6 +35,42 @@ public class DefaultOTCMap implements CharacterMapper {
             this.platformId = platformId;
             this.encodingId = encodingId;
             this.offset = offset;
+        }
+        
+        /**
+         * Determines and returns an appropriate {@code GlyphIndexer} for the
+         * given format, according to the formats which have been defined in
+         * the OpenType specification. See the <code>cmap</code> page for
+         * details about the layout of the various glyph-to-index tables.
+         * 
+         * @param buffer The buffer for this font.
+         * @param offset The offset into the buffer for the beginning of the
+         *               cmap subtables (which start directly after the record
+         *               entries).
+         * 
+         * @return A compatible {@code GlyphIndexer}.
+         */
+        private static GlyphIndexer createIndexer(ByteBuffer buffer,
+                                                  int offset) {
+            short format = buffer.getShort();
+            int length = buffer.getShort();
+            /* language */ buffer.getShort();
+            
+            switch (format) {
+            case 0:
+                return new ByteIndexer(buffer,
+                                       offset,
+                                       length);
+            case 4:
+                return new SegmentDeltaIndexer(buffer,
+                                               offset,
+                                               length);
+            case 6:
+            case 12:
+            case 14:
+            default:
+                return null; // TODO: Need default impl.
+            }
         }
         
         @Override
@@ -70,6 +102,17 @@ public class DefaultOTCMap implements CharacterMapper {
             this.length = length;
         }
         
+        /**
+         * Finds the ID for the given glyph for the cmap subtable format which
+         * this {@code GlyphIndexer} has been constructed for, or the index
+         * zero (0) for a glyph which is not contained in this mapping. 
+         * 
+         * @param character The character used to locate the ID returned by
+         *                  this method.
+         * 
+         * @return The ID for the given character, or zero if the character is
+         *         not contained within this mapping.
+         */
         public abstract int getGlyphId(int character);
     }
     
@@ -92,24 +135,70 @@ public class DefaultOTCMap implements CharacterMapper {
         }
     }
     
-    
     private static class SegmentDeltaIndexer extends GlyphIndexer {
-        private short[] indices;
+        private ShortBuffer sbuffer;
+        private int glyphIdRangeOffset;
+        
+        private short segments;
+        private short[] endCodes;
+        private short[] startCodes;
+        private short[] idDeltas;
+        private short[] idRangeOffset;
         
         private SegmentDeltaIndexer(ByteBuffer buffer,
                                     int offset,
                                     int length) {
             super(buffer, offset, length);
+            
+            sbuffer = buffer.asShortBuffer();
+            segments = (short)(sbuffer.get() / 2);
+            /* searchRange */ sbuffer.get();
+            /* entrySelector */ sbuffer.get();
+            /* rangeShift */ sbuffer.get();
+            
+            endCodes = new short[segments];
+            startCodes = new short[segments];
+            idDeltas = new short[segments];
+            idRangeOffset = new short[segments];
+            
+            sbuffer.get(endCodes);
+            /* reserved */ sbuffer.get();
+            sbuffer.get(startCodes);
+            sbuffer.get(idDeltas);
+            sbuffer.get(idRangeOffset);
+            glyphIdRangeOffset = sbuffer.position();
         }
         
         @Override
-        public int getGlyphId(int character) { return 0; }
+        public int getGlyphId(int character) {
+            char code = (char)character;
+            
+            int seg = -1;
+            for (int s = 0; s < segments; s++) {
+                if (code <= endCodes[s] && code >= startCodes[s]) {
+                    seg = s;
+                    break;
+                }
+            }
+            if (seg == -1) return 0;
+            
+            // FIXME: Memory address....
+            return sbuffer.get(idRangeOffset[seg]
+                               / 2
+                               + (code - startCodes[seg])
+                               + glyphIdRangeOffset
+                               - (idRangeOffset.length - seg)
+                               / 2);
+        }
     }
     
-    private GlyphIndexer[] indexers;
+    private final ByteBuffer buffer;
+    private final int offset;
+    private final int platformId;
+    private final int encodingId;
+    
     private EncodingRecord[] records;
-    private final int recordIndex;
-    private int format;
+    private GlyphIndexer indexer;
     
     /**
      * Creates and initializes the {@code CharacterMapper} for an OpenType
@@ -127,15 +216,11 @@ public class DefaultOTCMap implements CharacterMapper {
      * @param offset
      * @param platformId
      * @param encodingId
-     * 
-     * @throws UnsupportedEncodingScheme
      */
     /* package-private */ DefaultOTCMap(ByteBuffer buffer,
                                         int offset,
                                         int platformId,
-                                        int encodingId)
-       throws UnsupportedEncodingScheme
-{
+                                        int encodingId) {
         if (platformId < 0 || platformId > 4)
             throw new IllegalArgumentException("Unsupported platform ID "
                                                + platformId);
@@ -149,7 +234,7 @@ public class DefaultOTCMap implements CharacterMapper {
         /* version */ buffer.getShort();
         short numTables = buffer.getShort();
         records = new EncodingRecord[numTables];
-        int ri = -1;
+        
         for (int i = 0; i < numTables; i++) {
             /* 
              * Platform and encoding IDs for this record, named in such a way
@@ -161,39 +246,18 @@ public class DefaultOTCMap implements CharacterMapper {
             records[i] = new EncodingRecord(pId,
                                             eId,
                                             buffer.getInt());
-            if (pId == platformId && eId == encodingId) ri = i;
+            
+            if (pId == platformId && eId == encodingId)
+                indexer = EncodingRecord.createIndexer(buffer.duplicate(),
+                                                       offset + 4 + i * 8);
         }
-        if (ri < 0)
-            throw new UnsupportedEncodingScheme("The provided encoding ID was "
-                                                + "not found in this font.");
-        recordIndex = ri;
         
-        buffer.position(offset + records[recordIndex].offset);
-        format = buffer.getShort();
-        initializeCharacterIndexer(format);
-    }
-    
-    private GlyphIndexer initializeCharacterIndexer(int format) {
-        System.out.println("offset="
-                           + offset
-                           + "\nformat="
-                           + format);
+        /*
+         * TODO: If no compatible record is found, create default indexer
+         *       instead.
+         */
         
-        int length = buffer.getShort();
-        /* language */ buffer.getShort();
-        ByteBuffer buffer = this.buffer.duplicate();
-        switch (format) {
-        case 0:
-            return new ByteIndexer(buffer,
-                                   offset,
-                                   length);
-        case 4:
-            return new SegmentDeltaIndexer(buffer,
-                                           offset,
-                                           length);
-        default:
-            return null; // TODO: Need default impl.
-        }
+        System.out.println(indexer.getGlyphId('A'));
     }
     
     @Override

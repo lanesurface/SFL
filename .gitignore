@@ -7,9 +7,13 @@ bin/
 
 .settings/
 
-#IntelliJ
+
+# IntelliJ
 .idea/
 *.iml
 
 # OpenType Specification
 spec.pdf
+
+# Misc
+*.tdl

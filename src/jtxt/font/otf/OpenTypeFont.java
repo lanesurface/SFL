@@ -31,19 +31,12 @@ public class OpenTypeFont {
     
     public OpenTypeFont(java.nio.file.Path path, String name) {
         fontFile = new OTFFileReader(path.toFile());
+        cmapper = fontFile.createCharacterMapper();
         this.name = name;
     }
     
     public OpenTypeFace createTypeFace(int size, int renderAttribs) {
         return new OpenTypeFace(this,
-                                size,
-                                renderAttribs);
-    }
-    
-    public static OpenTypeFace createTypeFaceFromFile(java.nio.file.Path path,
-                                                      int size,
-                                                      int renderAttribs) {
-        return new OpenTypeFace(new OpenTypeFont(path, null /* ??? */),
                                 size,
                                 renderAttribs);
     }
@@ -54,9 +47,9 @@ public class OpenTypeFont {
         private final int size;
         private final int renderAttribs;
         
-        private OpenTypeFace(OpenTypeFont masterFont,
-                             int size,
-                             int renderAttribs) {
+        public OpenTypeFace(OpenTypeFont masterFont,
+                            int size,
+                            int renderAttribs) {
             this.masterFont = masterFont;
             this.size = size;
             this.renderAttribs = renderAttribs;

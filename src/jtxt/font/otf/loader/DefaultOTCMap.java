@@ -25,8 +25,8 @@ import jtxt.font.otf.CharacterMapper;
  */
 public class DefaultOTCMap implements CharacterMapper {
     protected static final class EncodingRecord {
-        protected short platformId;
-        protected short encodingId;
+        protected short platformId,
+                        encodingId;
         protected int offset;
         
         private EncodingRecord(short platformId,
@@ -76,7 +76,8 @@ public class DefaultOTCMap implements CharacterMapper {
         @Override
         public String toString() {
             String fmt = "EncodingRecord: [platformId=%d, encodingId=%d, "
-                         + "offset=%d] %n";
+                         + "offset=%d]%n";
+            
             return String.format(fmt,
                                  platformId,
                                  encodingId,
@@ -91,8 +92,8 @@ public class DefaultOTCMap implements CharacterMapper {
      */
     protected static abstract class GlyphIndexer {
         protected final ByteBuffer buffer;
-        protected final int offset;
-        protected final int length;
+        protected final int offset,
+                            length;
         
         protected GlyphIndexer(ByteBuffer buffer,
                                int offset,
@@ -137,13 +138,13 @@ public class DefaultOTCMap implements CharacterMapper {
     
     private static class SegmentDeltaIndexer extends GlyphIndexer {
         private ShortBuffer sbuffer;
-        private int glyphIdRangeOffset;
+        private int glyphIdArrayOffset;
         
         private short segments;
-        private short[] endCodes;
-        private short[] startCodes;
-        private short[] idDeltas;
-        private short[] idRangeOffset;
+        private short[] endCodes,
+                        startCodes,
+                        idDeltas,
+                        idRangeOffsets;
         
         private SegmentDeltaIndexer(ByteBuffer buffer,
                                     int offset,
@@ -159,46 +160,59 @@ public class DefaultOTCMap implements CharacterMapper {
             endCodes = new short[segments];
             startCodes = new short[segments];
             idDeltas = new short[segments];
-            idRangeOffset = new short[segments];
+            idRangeOffsets = new short[segments];
             
             sbuffer.get(endCodes);
             /* reserved */ sbuffer.get();
             sbuffer.get(startCodes);
             sbuffer.get(idDeltas);
-            sbuffer.get(idRangeOffset);
-            glyphIdRangeOffset = sbuffer.position();
+            sbuffer.get(idRangeOffsets);
+            glyphIdArrayOffset = sbuffer.position();
+        }
+        
+        private int findAddressForIdRange(int segment) {
+            return glyphIdArrayOffset
+                   - (idRangeOffsets.length - segment)
+                   * 2;
         }
         
         @Override
         public int getGlyphId(int character) {
             char code = (char)character;
             
-            int seg = -1;
-            for (int s = 0; s < segments; s++) {
-                if (code <= endCodes[s] && code >= startCodes[s]) {
-                    seg = s;
-                    break;
+            int s = 0;
+            for (; s < segments; s++) {
+                if (code <= endCodes[s]) {
+                    if (code >= startCodes[s]) break;
+                    
+                    /*
+                     * The given character is not in any of the segments
+                     * defined by this mapping.
+                     */
+                    return 0;
                 }
             }
-            if (seg == -1) return 0;
             
-            // FIXME: Memory address....
-            return sbuffer.get(idRangeOffset[seg]
-                               / 2
-                               + (code - startCodes[seg])
-                               + glyphIdRangeOffset
-                               - (idRangeOffset.length - seg)
-                               / 2);
+            short idRangeOffset = idRangeOffsets[s];
+            if (idRangeOffset == 0) return code + idDeltas[s];
+            
+            int id = sbuffer.get(idRangeOffset
+                                 + (code - startCodes[s])
+                                 + findAddressForIdRange(s));
+            
+            if (id == 0) return 0;
+            
+            return (id + idDeltas[s]) % 65536;
         }
     }
     
     private final ByteBuffer buffer;
-    private final int offset;
-    private final int platformId;
-    private final int encodingId;
+    private final int platformId,
+                      encodingId;
     
     private EncodingRecord[] records;
     private GlyphIndexer indexer;
+    private GlyphLocator locator;
     
     /**
      * Creates and initializes the {@code CharacterMapper} for an OpenType
@@ -220,15 +234,16 @@ public class DefaultOTCMap implements CharacterMapper {
     /* package-private */ DefaultOTCMap(ByteBuffer buffer,
                                         int offset,
                                         int platformId,
-                                        int encodingId) {
+                                        int encodingId,
+                                        GlyphLocator locator) {
         if (platformId < 0 || platformId > 4)
             throw new IllegalArgumentException("Unsupported platform ID "
                                                + platformId);
         
         this.buffer = buffer;
-        this.offset = offset;
         this.platformId = platformId;
         this.encodingId = encodingId;
+        this.locator = locator;
         
         buffer.position(offset);
         /* version */ buffer.getShort();
@@ -252,16 +267,11 @@ public class DefaultOTCMap implements CharacterMapper {
                                                        offset + 4 + i * 8);
         }
         
-        /*
-         * TODO: If no compatible record is found, create default indexer
-         *       instead.
-         */
-        
         System.out.println(indexer.getGlyphId('A'));
     }
     
     @Override
     public int getGlyphOffset(int character, int features) {
-        return 0;
+        return locator.getAddressForId(indexer.getGlyphId(character));
     }
 }

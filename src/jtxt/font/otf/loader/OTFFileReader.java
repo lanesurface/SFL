@@ -183,17 +183,6 @@ public class OTFFileReader {
         mapTableRecords(TABLE_RECORD_OFFSET,
                         numTables);
         
-        byte[] f = new byte[] { (byte)0x70,
-                                (byte)0x00,
-                                (byte)0x7f,
-                                (byte)0xff,
-                                (byte)0xff,
-                                (byte)0xff };
-        float[] nums = DataConverter.getF2Dot14(ByteBuffer.wrap(f),
-                                                0,
-                                                3);
-        System.out.println(Arrays.toString(nums));
-        
         createCharacterMapper();
     }
     
@@ -204,13 +193,20 @@ public class OTFFileReader {
          *       need to be constructed if this font supports features and the
          *       client requests that they be enabled.)
          */
-        ByteBuffer buffer = this.buffer.duplicate();
-        int offset = tables.get(cmap).offset;
+        int offset = tables.get(cmap).offset,
+            locaOffset = tables.get(loca).offset;
+        boolean usesLongFormat = false; // FIXME: Lookup value in `head` table.
         
-        return new DefaultOTCMap(buffer,
+        GlyphLocator locator = new GlyphLocator(buffer.duplicate(),
+                                                locaOffset,
+                                                0,
+                                                usesLongFormat);
+        
+        return new DefaultOTCMap(buffer.duplicate(),
                                  offset,
                                  PLATFORM_WINDOWS,
-                                 PLATFORM_WINDOWS_UNICODE_BMP);
+                                 PLATFORM_WINDOWS_UNICODE_BMP,
+                                 locator);
     }
     
     private TableRecord[] mapTableRecords(int offset, int numTables) {

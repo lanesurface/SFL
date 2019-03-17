@@ -23,27 +23,80 @@ import java.nio.ByteBuffer;
  * the <code>glyf</code> table, as they are stored in the file, and so they need
  * to be added to the offset of that table to locate the actual address.
  */
-public final class GlyphLocator {
-    private short[] glyphOffsets;
-    private boolean useLongAddresses;
-    
-    /* package-private */ GlyphLocator(ByteBuffer buffer,
-                                       int offset,
-                                       int numGlyphs,
-                                       boolean useLongAddresses) {
-        this.useLongAddresses = useLongAddresses;
+public interface GlyphLocator {
+    static GlyphLocator getInstance(ByteBuffer buffer,
+                                    int offset,
+                                    int numGlyphs,
+                                    boolean useLongAddresses) {
+        if (useLongAddresses) return new LongGlyphLocator(buffer,
+                                                          offset,
+                                                          numGlyphs);
         
-        glyphOffsets = new short[numGlyphs];
-        ((ByteBuffer)buffer.position(offset))
-                           .asShortBuffer()
-                           .get(glyphOffsets);
+        return new ShortGlyphLocator(buffer,
+                                     offset,
+                                     numGlyphs);
     }
     
-    public short getAddressForId(int glyphId) {
-        int offset = glyphOffsets[glyphId];
-        
-        return (short)(useLongAddresses
-                       ? offset
-                       : offset * 2);
+    /**
+     * 
+     * 
+     * @param glyphId
+     * 
+     * @return
+     */
+    static int findLengthOfDataRegion(GlyphLocator locator, int glyphId) {
+        return locator.getAddressOfId(glyphId + 1)
+               - locator.getAddressOfId(glyphId);
     }
+    
+    static final class ShortGlyphLocator implements GlyphLocator {
+        private short[] addresses;
+        
+        public ShortGlyphLocator(ByteBuffer buffer,
+                                 int offset,
+                                 int numGlyphs) {
+            addresses = new short[numGlyphs];
+            ((ByteBuffer)buffer.position(offset))
+                               .asShortBuffer()
+                               .get(addresses);
+        }
+        
+        @Override
+        public int getAddressOfId(int glyphId) {
+            return addresses[glyphId];
+        }
+    }
+    
+    static final class LongGlyphLocator implements GlyphLocator {
+        private int[] addresses;
+        
+        public LongGlyphLocator(ByteBuffer buffer,
+                                int offset,
+                                int numGlyphs) {
+            addresses = new int[numGlyphs];
+            ((ByteBuffer)buffer.position(offset))
+                               .asIntBuffer()
+                               .get(addresses);
+        }
+        
+        @Override
+        public int getAddressOfId(int glyphId) {
+            return addresses[glyphId];
+        }
+    }
+    
+    /**
+     * For the given ID belonging to a glyph in this font, this method will
+     * return the offset of that glyph in this font, assuming that the ID is
+     * a valid index. If the ID is outside the range of the glyphs in the data
+     * region, an {@code IndexOutOfBoundsException} may be thrown. (This method
+     * does not return the <code>.notdef</code> address for invalid indices;
+     * the mapping of characters to that glyph is left up components which
+     * deal with the <code>cmap</code> table.)
+     * 
+     * @param glyphId The ID of a valid glyph in this font.
+     * 
+     * @return The address of the glyph belonging to the given ID.
+     */
+    int getAddressOfId(int glyphId);
 }

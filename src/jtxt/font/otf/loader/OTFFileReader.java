@@ -197,10 +197,10 @@ public class OTFFileReader {
             locaOffset = tables.get(loca).offset;
         boolean usesLongFormat = false; // FIXME: Lookup value in `head` table.
         
-        GlyphLocator locator = new GlyphLocator(buffer.duplicate(),
-                                                locaOffset,
-                                                0,
-                                                usesLongFormat);
+        GlyphLocator locator = GlyphLocator.getInstance(buffer,
+                                                        locaOffset,
+                                                        0,
+                                                        usesLongFormat);
         
         return new DefaultOTCMap(buffer.duplicate(),
                                  offset,

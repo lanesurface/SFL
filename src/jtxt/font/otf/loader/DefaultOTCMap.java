@@ -50,8 +50,8 @@ public class DefaultOTCMap implements CharacterMapper {
          * 
          * @return A compatible {@code GlyphIndexer}.
          */
-        private static GlyphIndexer createIndexer(ByteBuffer buffer,
-                                                  int offset) {
+        protected static GlyphIndexer createIndexer(ByteBuffer buffer,
+                                                    int offset) {
             short format = buffer.getShort();
             int length = buffer.getShort();
             /* language */ buffer.getShort();
@@ -272,6 +272,6 @@ public class DefaultOTCMap implements CharacterMapper {
     
     @Override
     public int getGlyphOffset(int character, int features) {
-        return locator.getAddressForId(indexer.getGlyphId(character));
+        return locator.getAddressOfId(indexer.getGlyphId(character));
     }
 }

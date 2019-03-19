@@ -22,16 +22,14 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.URISyntaxException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
-import java.nio.file.Path;
-import java.nio.file.WatchKey;
-import java.nio.file.WatchService;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import jtxt.font.otf.CharacterMapper;
@@ -91,6 +89,104 @@ public class OTFFileReader {
             }
 
             return nums;
+        }
+    }
+    
+    private static class Table implements Iterable<Number> {
+        enum Type {
+            UINT8(8),
+            INT8(8),
+            UINT16(16),
+            INT16(16),
+            UINT24(24),
+            UINT32(32),
+            INT32(32),
+            FIXED(32),
+            FWORD(16),
+            UFWORD(16),
+            F2DOT14(16),
+            LONGDATETIME(64),
+            TAG(32),
+            OFFSET16(16),
+            OFFSET32(32);
+            
+            final int size;
+            
+            Type(int size) {
+                this.size = size;
+            }
+        }
+        
+        private ByteBuffer buffer;
+        private int offset;
+        private Type[] types;
+        
+        @SuppressWarnings("unused")
+        Table(ByteBuffer buffer,
+              int offset,
+              Type... types) {
+            this.buffer = buffer;
+            this.offset = offset;
+            this.types = types;
+        }
+        
+        @Override
+        public Iterator<Number> iterator() {
+            return new IterImpl();
+        }
+        
+        class IterImpl implements Iterator<Number> {
+            private int i,
+                        lo;
+            
+            @Override
+            public boolean hasNext() {
+                return i < types.length;
+            }
+
+            @Override
+            public Number next() {
+                int len = types[i++].size;
+                byte[] bytes = new byte[len];
+                buffer.position(offset + lo);
+                buffer.get(bytes);
+                lo += len;
+                
+                switch (len) {
+                case 1:
+                    return new Byte(bytes[0]);
+                case 2:
+                    return new Short((short)(bytes[0]
+                                             << 8
+                                             ^ bytes[1]));
+                case 4:
+                    return new Integer((int)(bytes[0]
+                                             << 24
+                                             ^ bytes[1]
+                                             << 16
+                                             ^ bytes[2]
+                                             << 8
+                                             ^ bytes[3]));
+                case 8:
+                    return new Long((long)(bytes[0]
+                                           << 56
+                                           ^ bytes[1]
+                                           << 48
+                                           ^ bytes[2]
+                                           << 40
+                                           ^ bytes[3]
+                                           << 32
+                                           ^ bytes[4]
+                                           << 24
+                                           ^ bytes[5]
+                                           << 16
+                                           ^ bytes[6]
+                                           << 8
+                                           ^ bytes[7]));
+                default:
+                    return null;
+                }
+            }
         }
     }
     
@@ -183,7 +279,10 @@ public class OTFFileReader {
         mapTableRecords(TABLE_RECORD_OFFSET,
                         numTables);
         
-        createCharacterMapper();
+        CharacterMapper mapper = createCharacterMapper();
+        int offset = mapper.getGlyphOffset('A',
+                                           CharacterMapper.NO_FEATURES);
+        System.out.println("offset=" + offset);
     }
     
     public CharacterMapper createCharacterMapper() {
@@ -195,12 +294,37 @@ public class OTFFileReader {
          */
         int offset = tables.get(cmap).offset,
             locaOffset = tables.get(loca).offset;
-        boolean usesLongFormat = false; // FIXME: Lookup value in `head` table.
+        
+//        Table table = new Table(buffer, tables.get(head).offset, 2,
+//                                                                 2,
+//                                                                 2, // BAD
+//                                                                 4,
+//                                                                 4,
+//                                                                 2,
+//                                                                 2, // Units/EM
+//                                                                 8,
+//                                                                 8,
+//                                                                 2, // xMin
+//                                                                 2, // yMin
+//                                                                 2, // xMax
+//                                                                 2, // yMax
+//                                                                 2,
+//                                                                 2,
+//                                                                 2,
+//                                                                 2,
+//                                                                 2);
+//        System.out.println("--- TABLE START ---");
+//        table.forEach(System.out::println);
+//        System.out.println("--- TABLE END ---");
+        
+        boolean useLongAddresses = buffer.getShort(tables.get(head).offset
+                                                   + 50) == 0 ? false : true;
+        int numGlyphs = buffer.getShort(tables.get(maxp).offset + 4);
         
         GlyphLocator locator = GlyphLocator.getInstance(buffer,
                                                         locaOffset,
-                                                        0,
-                                                        usesLongFormat);
+                                                        numGlyphs,
+                                                        useLongAddresses);
         
         return new DefaultOTCMap(buffer.duplicate(),
                                  offset,

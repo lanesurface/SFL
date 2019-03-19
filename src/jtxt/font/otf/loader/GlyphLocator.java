@@ -38,11 +38,19 @@ public interface GlyphLocator {
     }
     
     /**
+     * Calculates the number of bytes for a glyph with the given glyph ID,
+     * using <code>locator</code> to make this calculation. The difference
+     * between the memory addresses for ID and ID + 1 give this value, as there
+     * is no table which stores this information in the font otherwise.
      * 
+     * @param locator An instance of {@code GlyphLocator}. This instance must
+     *                be the same as the one used to address glyphs in this
+     *                font, as it relies on the underlying format of them.
+     * @param glyphId The ID for the glyph which the calculation will be made
+     *                for.
      * 
-     * @param glyphId
-     * 
-     * @return
+     * @return The length (in bytes) of the region in the <code>glyf</code>
+     *         table for the glyph with the given ID.
      */
     static int findLengthOfDataRegion(GlyphLocator locator, int glyphId) {
         return locator.getAddressOfId(glyphId + 1)
@@ -63,11 +71,18 @@ public interface GlyphLocator {
         
         @Override
         public int getAddressOfId(int glyphId) {
-            return addresses[glyphId];
+            return addresses[glyphId] * 2;
         }
     }
     
     static final class LongGlyphLocator implements GlyphLocator {
+        /*
+         * Contrary to the name, "long" addresses, according to the
+         * specification, store the actual value of the address in memory,
+         * which means they are twice the value of a short address and thus
+         * take up 32-bits in memory. Don't conflate the name with the size of
+         * the underlying type which represents it.
+         */
         private int[] addresses;
         
         public LongGlyphLocator(ByteBuffer buffer,

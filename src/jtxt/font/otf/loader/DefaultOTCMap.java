@@ -69,7 +69,12 @@ public class DefaultOTCMap implements CharacterMapper {
             case 12:
             case 14:
             default:
-                return null; // TODO: Need default impl.
+                /*
+                 * If the format which is defined by this record does not have
+                 * an implementation, return the `.notdef` character in all
+                 * cases.
+                 */
+                return id -> 0;
             }
         }
         
@@ -90,19 +95,8 @@ public class DefaultOTCMap implements CharacterMapper {
      * {@code GlyphIndexer} can be used to lookup the address in the
      * <code>loca</code> table.
      */
-    protected static abstract class GlyphIndexer {
-        protected final ByteBuffer buffer;
-        protected final int offset,
-                            length;
-        
-        protected GlyphIndexer(ByteBuffer buffer,
-                               int offset,
-                               int length) {
-            this.buffer = buffer;
-            this.offset = offset;
-            this.length = length;
-        }
-        
+    @FunctionalInterface
+    protected static interface GlyphIndexer {
         /**
          * Finds the ID for the given glyph for the cmap subtable format which
          * this {@code GlyphIndexer} has been constructed for, or the index
@@ -114,16 +108,15 @@ public class DefaultOTCMap implements CharacterMapper {
          * @return The ID for the given character, or zero if the character is
          *         not contained within this mapping.
          */
-        public abstract int getGlyphId(int character);
+        int getGlyphId(int character);
     }
     
-    private static class ByteIndexer extends GlyphIndexer {
+    private static class ByteIndexer implements GlyphIndexer {
         private byte[] indices;
         
         private ByteIndexer(ByteBuffer buffer,
                             int offset,
                             int length) {
-            super(buffer, offset, length);
             indices = new byte[256];
             buffer.get(indices);
         }
@@ -136,8 +129,8 @@ public class DefaultOTCMap implements CharacterMapper {
         }
     }
     
-    private static class SegmentDeltaIndexer extends GlyphIndexer {
-        private ShortBuffer sbuffer;
+    private static class SegmentDeltaIndexer implements GlyphIndexer {
+        private ShortBuffer buffer;
         private int glyphIdArrayOffset;
         
         private short segments;
@@ -146,28 +139,26 @@ public class DefaultOTCMap implements CharacterMapper {
                         idDeltas,
                         idRangeOffsets;
         
-        private SegmentDeltaIndexer(ByteBuffer buffer,
+        private SegmentDeltaIndexer(ByteBuffer buff,
                                     int offset,
                                     int length) {
-            super(buffer, offset, length);
-            
-            sbuffer = buffer.asShortBuffer();
-            segments = (short)(sbuffer.get() / 2);
-            /* searchRange */ sbuffer.get();
-            /* entrySelector */ sbuffer.get();
-            /* rangeShift */ sbuffer.get();
+            buffer = buff.asShortBuffer();
+            segments = (short)(buffer.get() / 2);
+            /* searchRange */ buffer.get();
+            /* entrySelector */ buffer.get();
+            /* rangeShift */ buffer.get();
             
             endCodes = new short[segments];
             startCodes = new short[segments];
             idDeltas = new short[segments];
             idRangeOffsets = new short[segments];
             
-            sbuffer.get(endCodes);
-            /* reserved */ sbuffer.get();
-            sbuffer.get(startCodes);
-            sbuffer.get(idDeltas);
-            sbuffer.get(idRangeOffsets);
-            glyphIdArrayOffset = sbuffer.position();
+            buffer.get(endCodes);
+            /* reserved */ buffer.get();
+            buffer.get(startCodes);
+            buffer.get(idDeltas);
+            buffer.get(idRangeOffsets);
+            glyphIdArrayOffset = buffer.position();
         }
         
         private int findAddressForIdRange(int segment) {
@@ -196,7 +187,7 @@ public class DefaultOTCMap implements CharacterMapper {
             short idRangeOffset = idRangeOffsets[s];
             if (idRangeOffset == 0) return code + idDeltas[s];
             
-            int id = sbuffer.get(idRangeOffset
+            int id = buffer.get(idRangeOffset
                                  + (code - startCodes[s])
                                  + findAddressForIdRange(s));
             
@@ -266,8 +257,6 @@ public class DefaultOTCMap implements CharacterMapper {
                 indexer = EncodingRecord.createIndexer(buffer.duplicate(),
                                                        offset + 4 + i * 8);
         }
-        
-        System.out.println(indexer.getGlyphId('A'));
     }
     
     @Override

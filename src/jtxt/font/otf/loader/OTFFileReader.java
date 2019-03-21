@@ -92,7 +92,7 @@ public class OTFFileReader {
         }
     }
     
-    private static class Table implements Iterable<Number> {
+    static class Table implements Iterable<Number> {
         enum Type {
             UINT8(8),
             INT8(8),
@@ -121,7 +121,6 @@ public class OTFFileReader {
         private int offset;
         private Type[] types;
         
-        @SuppressWarnings("unused")
         Table(ByteBuffer buffer,
               int offset,
               Type... types) {
@@ -132,61 +131,64 @@ public class OTFFileReader {
         
         @Override
         public Iterator<Number> iterator() {
-            return new IterImpl();
-        }
-        
-        class IterImpl implements Iterator<Number> {
-            private int i,
-                        lo;
-            
-            @Override
-            public boolean hasNext() {
-                return i < types.length;
-            }
-
-            @Override
-            public Number next() {
-                int len = types[i++].size;
-                byte[] bytes = new byte[len];
-                buffer.position(offset + lo);
-                buffer.get(bytes);
-                lo += len;
+            return new Iterator<Number>() {
+                private int i,
+                            lo;
                 
-                switch (len) {
-                case 1:
-                    return new Byte(bytes[0]);
-                case 2:
-                    return new Short((short)(bytes[0]
-                                             << 8
-                                             ^ bytes[1]));
-                case 4:
-                    return new Integer((int)(bytes[0]
-                                             << 24
-                                             ^ bytes[1]
-                                             << 16
-                                             ^ bytes[2]
-                                             << 8
-                                             ^ bytes[3]));
-                case 8:
-                    return new Long((long)(bytes[0]
-                                           << 56
-                                           ^ bytes[1]
-                                           << 48
-                                           ^ bytes[2]
-                                           << 40
-                                           ^ bytes[3]
-                                           << 32
-                                           ^ bytes[4]
-                                           << 24
-                                           ^ bytes[5]
-                                           << 16
-                                           ^ bytes[6]
-                                           << 8
-                                           ^ bytes[7]));
-                default:
-                    return null;
+                @Override
+                public boolean hasNext() {
+                    return i < types.length;
                 }
-            }
+                
+                @Override
+                public Number next() {
+                    Type type = types[i++];
+                    int len = type.size / 8;
+                    byte[] bytes = new byte[len];
+                    buffer.position(offset + lo);
+                    buffer.get(bytes);
+                    lo += len;
+                    
+                    switch (type) {
+                    case UINT8:
+                    case INT8:
+                        return new Byte(bytes[0]);
+                    case UINT16:
+                    case INT16:
+                        return new Short((short)(bytes[0]
+                                                 << 8
+                                                 ^ bytes[1]));
+                    case FIXED:
+                    case UINT32:
+                    case INT32:
+                        return new Integer((int)(bytes[0]
+                                                 << 24
+                                                 ^ bytes[1]
+                                                 << 16
+                                                 ^ bytes[2]
+                                                 << 8
+                                                 ^ bytes[3]));
+                    case LONGDATETIME: // NOT proper repr.
+                        return new Long((long)(bytes[0]
+                                               << 56
+                                               ^ bytes[1]
+                                               << 48
+                                               ^ bytes[2]
+                                               << 40
+                                               ^ bytes[3]
+                                               << 32
+                                               ^ bytes[4]
+                                               << 24
+                                               ^ bytes[5]
+                                               << 16
+                                               ^ bytes[6]
+                                               << 8
+                                               ^ bytes[7]));
+                    default:
+                        return null;
+                    }
+                }
+            };
         }
     }
     
@@ -280,9 +282,12 @@ public class OTFFileReader {
                         numTables);
         
         CharacterMapper mapper = createCharacterMapper();
-        int offset = mapper.getGlyphOffset('A',
-                                           CharacterMapper.NO_FEATURES);
-        System.out.println("offset=" + offset);
+        int offset = tables.get(glyf).offset
+                     + mapper.getGlyphOffset('B', CharacterMapper.NO_FEATURES);
+        Glyph.SimpleGlyph glyph = new Glyph.SimpleGlyph(buffer,
+                                                        offset,
+                                                        12,
+                                                        -1);
     }
     
     public CharacterMapper createCharacterMapper() {
@@ -295,27 +300,29 @@ public class OTFFileReader {
         int offset = tables.get(cmap).offset,
             locaOffset = tables.get(loca).offset;
         
-//        Table table = new Table(buffer, tables.get(head).offset, 2,
-//                                                                 2,
-//                                                                 2, // BAD
-//                                                                 4,
-//                                                                 4,
-//                                                                 2,
-//                                                                 2, // Units/EM
-//                                                                 8,
-//                                                                 8,
-//                                                                 2, // xMin
-//                                                                 2, // yMin
-//                                                                 2, // xMax
-//                                                                 2, // yMax
-//                                                                 2,
-//                                                                 2,
-//                                                                 2,
-//                                                                 2,
-//                                                                 2);
-//        System.out.println("--- TABLE START ---");
-//        table.forEach(System.out::println);
-//        System.out.println("--- TABLE END ---");
+        Table table = new Table(buffer,
+                                tables.get(head).offset,
+                                Table.Type.UINT16,
+                                Table.Type.UINT16,
+                                Table.Type.FIXED, // BAD
+                                Table.Type.UINT32,
+                                Table.Type.UINT32,
+                                Table.Type.UINT16,
+                                Table.Type.UINT16, // Units/EM
+                                Table.Type.LONGDATETIME,
+                                Table.Type.LONGDATETIME,
+                                Table.Type.INT16, // xMin
+                                Table.Type.INT16, // yMin
+                                Table.Type.INT16, // xMax
+                                Table.Type.INT16, // yMax
+                                Table.Type.UINT16,
+                                Table.Type.UINT16,
+                                Table.Type.INT16,
+                                Table.Type.INT16,
+                                Table.Type.INT16);
+        System.out.println("--- TABLE START ---");
+        table.forEach(System.out::println);
+        System.out.println("--- TABLE END ---");
         
         boolean useLongAddresses = buffer.getShort(tables.get(head).offset
                                                    + 50) == 0 ? false : true;

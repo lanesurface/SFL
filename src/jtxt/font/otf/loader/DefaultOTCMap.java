@@ -25,9 +25,9 @@ import jtxt.font.otf.CharacterMapper;
  */
 public class DefaultOTCMap implements CharacterMapper {
     protected static final class EncodingRecord {
-        protected short platformId,
-                        encodingId;
-        protected int offset;
+        public short platformId,
+                     encodingId;
+        public int offset;
         
         private EncodingRecord(short platformId,
                                short encodingId,
@@ -50,8 +50,8 @@ public class DefaultOTCMap implements CharacterMapper {
          * 
          * @return A compatible {@code GlyphIndexer}.
          */
-        protected static GlyphIndexer createIndexer(ByteBuffer buffer,
-                                                    int offset) {
+        public static GlyphIndexer createIndexer(ByteBuffer buffer,
+                                                 int offset) {
             short format = buffer.getShort();
             int length = buffer.getShort();
             /* language */ buffer.getShort();
@@ -99,8 +99,7 @@ public class DefaultOTCMap implements CharacterMapper {
     protected static interface GlyphIndexer {
         /**
          * Finds the ID for the given glyph for the cmap subtable format which
-         * this {@code GlyphIndexer} has been constructed for, or the index
-         * zero (0) for a glyph which is not contained in this mapping. 
+         * this {@code GlyphIndexer} has been constructed for.
          * 
          * @param character The character used to locate the ID returned by
          *                  this method.
@@ -188,8 +187,8 @@ public class DefaultOTCMap implements CharacterMapper {
             if (idRangeOffset == 0) return code + idDeltas[s];
             
             int id = buffer.get(idRangeOffset
-                                 + (code - startCodes[s])
-                                 + findAddressForIdRange(s));
+                                + (code - startCodes[s])
+                                + findAddressForIdRange(s));
             
             if (id == 0) return 0;
             

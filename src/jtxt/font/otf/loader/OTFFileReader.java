@@ -22,11 +22,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.URISyntaxException;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -92,7 +90,7 @@ public class OTFFileReader {
         }
     }
     
-    static class Table implements Iterable<Number> {
+    static class Table implements Iterable<Object> {
         enum Type {
             UINT8(8),
             INT8(8),
@@ -130,8 +128,8 @@ public class OTFFileReader {
         }
         
         @Override
-        public Iterator<Number> iterator() {
-            return new Iterator<Number>() {
+        public Iterator<Object> iterator() {
+            return new Iterator<Object>() {
                 private int i,
                             lo;
                 
@@ -141,7 +139,7 @@ public class OTFFileReader {
                 }
                 
                 @Override
-                public Number next() {
+                public Object next() {
                     Type type = types[i++];
                     int len = type.size / 8;
                     byte[] bytes = new byte[len];
@@ -283,10 +281,9 @@ public class OTFFileReader {
         
         CharacterMapper mapper = createCharacterMapper();
         int offset = tables.get(glyf).offset
-                     + mapper.getGlyphOffset('B', CharacterMapper.NO_FEATURES);
-        Glyph.SimpleGlyph glyph = new Glyph.SimpleGlyph(buffer,
+                     + mapper.getGlyphOffset('A', CharacterMapper.NO_FEATURES);
+        Glyph.SimpleGlyph glyph = new Glyph.SimpleGlyph(buffer.duplicate(),
                                                         offset,
-                                                        12,
                                                         -1);
     }
     

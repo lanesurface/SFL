@@ -27,37 +27,38 @@ import java.nio.ByteBuffer;
 public abstract class Glyph {
     protected ByteBuffer buffer;
     protected Rectangle2D bounds;
-    protected final int offset,
-                        ptSize;
+    protected final int offset;
+    protected final short numContours;
     
-    protected final short numContours,
-                          xMin,
-                          yMin,
-                          xMax,
-                          yMax;
-    
-    public abstract Path2D getPath();
-    
-    protected Glyph(ByteBuffer buffer,
-                    int offset,
-                    int ptSize) {
+    protected Glyph(ByteBuffer buffer, int offset) {
         this.buffer = buffer;
         this.offset = offset;
-        this.ptSize = ptSize;
         
         buffer.position(offset);
         numContours = buffer.getShort();
-        xMin = buffer.getShort();
-        yMin = buffer.getShort();
-        xMax = buffer.getShort();
-        yMax = buffer.getShort();
+        short xMin = buffer.getShort(),
+              yMin = buffer.getShort(),
+              xMax = buffer.getShort(),
+              yMax = buffer.getShort();
         bounds = new Rectangle2D.Float(xMin,
                                        yMin,
                                        xMax,
                                        yMax);
     }
     
-    public static class SimpleGlyph extends Glyph {
+    public Rectangle2D getBounds() {
+        return bounds;
+    }
+    
+    public abstract Path2D getPath(int dotsPerInch,
+                                   int unitsPerEm,
+                                   int pointSize);
+    
+    /**
+     * A {@code SimpleGlyph} is a glyph which defines all of the contours required for
+     * drawing it. 
+     */
+    public static final class SimpleGlyph extends Glyph {
         private enum Flag {
             ON_CURVE_POINT,
             X_SHORT_VECTOR,
@@ -66,7 +67,7 @@ public abstract class Glyph {
             X_IS_SAME_OR_POSITIVE_X_SHORT_VECTOR,
             Y_IS_SAME_OR_POSITIVE_Y_SHORT_VECTOR,
             OVERLAP_SIMPLE;
-        
+            
             boolean instructing(byte flag) {
                 byte binPosition = (byte)Math.pow(2,
                                                   ordinal());
@@ -75,72 +76,80 @@ public abstract class Glyph {
             }
         }
         
-        private final short[] endPoints;
-        private final byte[] flags;
-        private final short[] xCoordinates,
-                              yCoordinates;
+        private final short[] endPoints,
+                              xCoords,
+                              yCoords;
+        private final byte[] flags,
+                             instructions;
         
         SimpleGlyph(ByteBuffer buffer,
                     int offset,
-                    int ptSize,
                     int dataRegionLength) {
-            super(buffer, offset, ptSize);
+            super(buffer, offset);
             
+            int lo = buffer.position();
             endPoints = new short[numContours];
             buffer.asShortBuffer()
                   .get(endPoints);
-//            buffer.get(null,
-//                       0,
-//                       buffer.getShort());
-            flags = expandFlags(offset
-                                + numContours
-                                * 2
-                                + buffer.getShort());
-            
-            xCoordinates = yCoordinates = null;
-        }
-        
-        private byte[] expandFlags(int offset) {
-            byte[] flags = new byte[endPoints[numContours - 1]];
+            buffer.position(lo + numContours * 2);
+            instructions = new byte[buffer.getShort()];
+            buffer.get(instructions);
+            flags = new byte[endPoints[numContours - 1] + 1];
             
             for (int i = 0; i < flags.length; i++) {
-                byte flag = buffer.get(offset + i);
+                byte flag = (byte)(buffer.get() & 0xFF);
                 flags[i] = flag;
+                System.out.println("flag("
+                                   + i
+                                   + ")="
+                                   + flag
+                                   + ", bin="
+                                   + Integer.toBinaryString(flag));
                 
                 if (Flag.REPEAT_FLAG.instructing(flag)) {
-                    byte n = buffer.get(offset + i + 1);
+                    byte n = buffer.get();
+                    System.out.println("Repeat " + n + " times...");
                     
-                    for (int j = 0; j < n; j++)
-                        flags[i + j + 1] = flag;
-                    i += n;
+                    while (n-- > 0) flags[++i] = flag;
                 }
             }
             
-            return flags;
+            xCoords = yCoords = null;
+        }
+        
+        byte[] getInstructions() {
+            return instructions;
         }
         
         @Override
-        public Path2D getPath() {
-            QuadCurve2D curve = new QuadCurve2D.Float(0,
-                                                      0,
-                                                      0,
-                                                      0,
-                                                      0,
-                                                      0);
-            return new Path2D.Float(curve, AffineTransform.getScaleInstance(0,
-                                                                            0));
-        }
-        
-        @Override
-        public String toString() {
-            String res = "";
-            for (int i = 0; i < flags.length; i++)
-                res += "f(" + i
-                            + ")="
-                            + Integer.toBinaryString(flags[i])
-                            + "\n";
+        public Path2D getPath(int dotsPerInch,
+                              int unitsPerEm,
+                              int pointSize) {
+            Path2D path = new Path2D.Float(Path2D.WIND_EVEN_ODD);
             
-            return res;
+            for (int contour = 0; contour < endPoints.length; contour++) {
+                for (int point = endPoints[contour];
+                     point < endPoints[contour];
+                     point += 3)
+                {
+                    path.append(new QuadCurve2D.Float(xCoords[point],
+                                                      yCoords[point],
+                                                      xCoords[point + 1],
+                                                      yCoords[point + 1],
+                                                      xCoords[point + 2],
+                                                      yCoords[point + 2]),
+                                true);
+                }
+            }
+            
+            // The conversion ratio for pixel -> device space coordinates.
+            double dsc = dotsPerInch
+                         * (1 / 72.d)
+                         * pointSize
+                         / unitsPerEm;
+            return new Path2D.Float(path,
+                                    AffineTransform.getScaleInstance(dsc,
+                                                                     dsc));
         }
     }
     

@@ -278,13 +278,15 @@ public class OTFFileReader {
         int numTables = buffer.getShort();
         mapTableRecords(TABLE_RECORD_OFFSET,
                         numTables);
-        
+    }
+    
+    public Glyph getGlyph(char character, int features) {
         CharacterMapper mapper = createCharacterMapper();
-        int offset = tables.get(glyf).offset
-                     + mapper.getGlyphOffset('A', CharacterMapper.NO_FEATURES);
-        Glyph.SimpleGlyph glyph = new Glyph.SimpleGlyph(buffer.duplicate(),
-                                                        offset,
-                                                        -1);
+        int offset = tables.get(glyf).offset + mapper.getGlyphOffset(character,
+                                                                     0);
+        return new Glyph.SimpleGlyph(buffer.duplicate(),
+                                     offset,
+                                     0);
     }
     
     public CharacterMapper createCharacterMapper() {

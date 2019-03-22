@@ -16,9 +16,18 @@
 package jtxt.font.otf;
 
 import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.Toolkit;
 import java.awt.geom.Path2D;
 import java.awt.image.RenderedImage;
+import java.nio.file.Paths;
 
+import javax.swing.JComponent;
+import javax.swing.JFrame;
+
+import jtxt.font.otf.loader.Glyph;
 import jtxt.font.otf.loader.OTFFileReader;
 
 /**
@@ -56,8 +65,13 @@ public class OpenTypeFont {
         }
         
         public Path2D getGlyphPath(char character, int hints) {
+            int dpi = Toolkit.getDefaultToolkit().getScreenResolution();
+            Glyph glyph = masterFont.fontFile.getGlyph(character,
+                                                       hints);
             
-            return null;
+            return glyph.getPath(dpi,
+                                 2048, // FIXME: Read from `head`
+                                 size);
         }
         
         @Override
@@ -69,5 +83,38 @@ public class OpenTypeFont {
             
             return null;
         }
+    }
+    
+    public static void main(String[] args) {
+        OpenTypeFont font = new OpenTypeFont(Paths.get("C:",
+                                                       "Windows",
+                                                       "Fonts",
+                                                       "CALIBRI.TTF"), null);
+        Path2D path = font.createTypeFace(12, 0).getGlyphPath('A',
+                                                              0);
+        JFrame frame = new JFrame("Font test");
+        frame.setSize(200, 200);
+        frame.setVisible(true);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        
+        frame.add(new JComponent() {
+            @Override
+            public void paint(Graphics g) {
+                Graphics2D graphics = (Graphics2D)g;
+                int width = getWidth(),
+                    height = getHeight();
+                
+                graphics.setColor(Color.BLACK);
+                graphics.fillRect(0,
+                                  0,
+                                  width,
+                                  height);
+                
+                graphics.setColor(Color.WHITE);
+                graphics.translate(width / 2,
+                                   height / 2);
+                graphics.draw(path);
+            }
+        });
     }
 }

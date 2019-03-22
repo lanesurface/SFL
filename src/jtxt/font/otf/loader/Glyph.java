@@ -31,10 +31,10 @@ public abstract class Glyph {
                         ptSize;
     
     protected final short numContours,
-                            xMin,
-                            yMin,
-                            xMax,
-                            yMax;
+                          xMin,
+                          yMin,
+                          xMax,
+                          yMax;
     
     public abstract Path2D getPath();
     
@@ -58,8 +58,6 @@ public abstract class Glyph {
     }
     
     public static class SimpleGlyph extends Glyph {
-        private final short[] endPoints;
-        
         private enum Flag {
             ON_CURVE_POINT,
             X_SHORT_VECTOR,
@@ -77,7 +75,10 @@ public abstract class Glyph {
             }
         }
         
+        private final short[] endPoints;
         private final byte[] flags;
+        private final short[] xCoordinates,
+                              yCoordinates;
         
         SimpleGlyph(ByteBuffer buffer,
                     int offset,
@@ -88,14 +89,34 @@ public abstract class Glyph {
             endPoints = new short[numContours];
             buffer.asShortBuffer()
                   .get(endPoints);
-            short instructionLength = buffer.getShort();
-            flags = new byte[instructionLength];
-            buffer.get(flags);
+//            buffer.get(null,
+//                       0,
+//                       buffer.getShort());
+            flags = expandFlags(offset
+                                + numContours
+                                * 2
+                                + buffer.getShort());
             
-            System.out.println("ON_CURVE="
-                               + Flag.ON_CURVE_POINT.instructing(flags[0])
-                               + "\nbin="
-                               + Integer.toBinaryString(flags[0]));
+            xCoordinates = yCoordinates = null;
+        }
+        
+        private byte[] expandFlags(int offset) {
+            byte[] flags = new byte[endPoints[numContours - 1]];
+            
+            for (int i = 0; i < flags.length; i++) {
+                byte flag = buffer.get(offset + i);
+                flags[i] = flag;
+                
+                if (Flag.REPEAT_FLAG.instructing(flag)) {
+                    byte n = buffer.get(offset + i + 1);
+                    
+                    for (int j = 0; j < n; j++)
+                        flags[i + j + 1] = flag;
+                    i += n;
+                }
+            }
+            
+            return flags;
         }
         
         @Override
@@ -108,6 +129,18 @@ public abstract class Glyph {
                                                       0);
             return new Path2D.Float(curve, AffineTransform.getScaleInstance(0,
                                                                             0));
+        }
+        
+        @Override
+        public String toString() {
+            String res = "";
+            for (int i = 0; i < flags.length; i++)
+                res += "f(" + i
+                            + ")="
+                            + Integer.toBinaryString(flags[i])
+                            + "\n";
+            
+            return res;
         }
     }
     

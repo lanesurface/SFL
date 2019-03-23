@@ -20,6 +20,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
 import java.awt.image.RenderedImage;
 import java.nio.file.Paths;
@@ -85,10 +86,10 @@ public class OpenTypeFont {
                                                        "Windows",
                                                        "Fonts",
                                                        "CALIBRI.TTF"), null);
-        Path2D path = font.createTypeFace(72, 0).getGlyphPath('B',
+        Path2D path = font.createTypeFace(72, 0).getGlyphPath('R',
                                                               0);
         JFrame frame = new JFrame("Font test");
-        frame.setSize(200, 200);
+        frame.setSize(400, 400);
         frame.setVisible(true);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         
@@ -108,6 +109,10 @@ public class OpenTypeFont {
                 graphics.setColor(Color.WHITE);
                 graphics.translate(width / 2,
                                    height / 2);
+                
+//                graphics.setTransform(AffineTransform.getQuadrantRotateInstance(2,
+//                                                                                0,
+//                                                                                0));
                 graphics.draw(path);
             }
         });

@@ -19,8 +19,11 @@ import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
+import java.awt.geom.QuadCurve2D;
 import java.awt.geom.Rectangle2D;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * 
@@ -90,10 +93,34 @@ public abstract class Glyph {
                                   Y_DELTA = 1 << 5,
                                   OVERLAP_SIMPLE = 1 << 6;
         
+        /**
+         * A class which represents an (x,&nbsp;y) Cartesian coordinate and
+         * that coordinate's associated flag. This simplifies the
+         * representation of these elements during the curve construction
+         * process and reduces the number of variables which must be kept track
+         * of there.
+         */
+        private static final class Coordinate {
+            private final int flag,
+                              x,
+                              y;
+            
+            Coordinate(int flag,
+                       int x,
+                       int y) {
+                this.flag = flag;
+                this.x = x;
+                this.y = y;
+            }
+            
+            boolean onCurve() {
+                return (ON_CURVE_POINT & flag) > 0;
+            }
+        }
+        
         private final short numCoordinates;
-        private final short[] endPoints,
-                              xCoords,
-                              yCoords;
+        private final short[] endPoints;
+        private Coordinate[] coords;
         private final byte[] flags,
                              instructions;
         
@@ -123,8 +150,14 @@ public abstract class Glyph {
                 }
             }
             
-            xCoords = readCoordinates(X_SHORT_VECTOR, X_DELTA);
-            yCoords = readCoordinates(Y_SHORT_VECTOR, Y_DELTA);
+            short[] xCoords = readCoordinates(X_SHORT_VECTOR, X_DELTA);
+            short[] yCoords = readCoordinates(Y_SHORT_VECTOR, Y_DELTA);
+            
+            coords = new Coordinate[numCoordinates];
+            for (int i = 0; i < numCoordinates; i++)
+                coords[i] = new Coordinate(flags[i],
+                                           xCoords[i],
+                                           yCoords[i]);
         }
         
         private short[] readCoordinates(int shortVector,
@@ -155,26 +188,50 @@ public abstract class Glyph {
         public Path2D getPath(int pointSize) {
             Path2D path = new Path2D.Float(Path2D.WIND_NON_ZERO);
             
-            int prevX = (int)bounds.getX(),
-                prevY = (int)bounds.getY(),
-                point = 0;
-            for (int contour = 0; contour < endPoints.length; contour++) {
-                for (; point < endPoints[contour]; point++) {
-                    /*
-                     * FIXME: The coordinate data makes up a series of bezier
-                     *        splines which define this contour, but I'm not
-                     *        sure how the ON_CURVE flag governs the way that
-                     *        these splines should be constructed. (I do know,
-                     *        however, that they are quadratic for TTF data.)
-                     */
-                    int x = xCoords[point],
-                        y = yCoords[point];
-                    path.append(new Line2D.Float(prevX,
-                                                 prevY,
-                                                 x,
-                                                 y), false);
-                    prevX = x;
-                    prevY = y;
+            ArrayList<Coordinate> coordinates = new ArrayList<>(
+                Arrays.asList(coords)
+            );
+            int point = 0;
+            for (int contour = 0;
+                 contour < endPoints.length;
+                 contour++)
+            {
+                for (; point < endPoints[contour]; point++) {        
+                    Coordinate curr = coordinates.get(point);
+                    
+                    if (point > 0) {
+                        Coordinate prev = coordinates.get(point - 1);
+                        
+                        /* 
+                         * Two subsequent on-curve points indicates a line
+                         * should be drawn.
+                         */
+                        if (prev.onCurve() && curr.onCurve()) {
+                            path.append(new Line2D.Float(prev.x,
+                                                         prev.y,
+                                                         curr.x,
+                                                         curr.y), true);
+                            continue;
+                        }
+                        
+                        if (!prev.onCurve() && !curr.onCurve()) {
+                            int ix = (prev.x + curr.x) / 2,
+                                iy = (prev.y + curr.y) / 2;
+                            Coordinate first = coordinates.get(point - 2),
+                                       interp = new Coordinate(ON_CURVE_POINT,
+                                                               ix,
+                                                               iy);
+                            coordinates.add(point, interp);
+                            
+                            path.append(new QuadCurve2D.Float(first.x,
+                                                              first.y,
+                                                              curr.x,
+                                                              curr.y,
+                                                              ix,
+                                                              iy), true);
+                            continue;
+                        }
+                    }
                 }
             }
             

@@ -65,13 +65,8 @@ public class OpenTypeFont {
         }
         
         public Path2D getGlyphPath(char character, int hints) {
-            int dpi = Toolkit.getDefaultToolkit().getScreenResolution();
-            Glyph glyph = masterFont.fontFile.getGlyph(character,
-                                                       hints);
-            
-            return glyph.getPath(dpi,
-                                 2048, // FIXME: Read from `head`
-                                 size);
+            return masterFont.fontFile.getGlyph(character,
+                                                0).getPath(size);
         }
         
         @Override
@@ -90,7 +85,7 @@ public class OpenTypeFont {
                                                        "Windows",
                                                        "Fonts",
                                                        "CALIBRI.TTF"), null);
-        Path2D path = font.createTypeFace(12, 0).getGlyphPath('A',
+        Path2D path = font.createTypeFace(72, 0).getGlyphPath('B',
                                                               0);
         JFrame frame = new JFrame("Font test");
         frame.setSize(200, 200);

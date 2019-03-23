@@ -18,6 +18,7 @@ package jtxt.font.otf.loader;
 import static jtxt.font.otf.CharacterMapper.PLATFORM_WINDOWS;
 import static jtxt.font.otf.CharacterMapper.PLATFORM_WINDOWS_UNICODE_BMP;
 
+import java.awt.Toolkit;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -284,9 +285,13 @@ public class OTFFileReader {
         CharacterMapper mapper = createCharacterMapper();
         int offset = tables.get(glyf).offset + mapper.getGlyphOffset(character,
                                                                      0);
+        int dpi = Toolkit.getDefaultToolkit().getScreenResolution();
+        
         return new Glyph.SimpleGlyph(buffer.duplicate(),
                                      offset,
-                                     0);
+                                     dpi,
+                                     2048);
+        
     }
     
     public CharacterMapper createCharacterMapper() {

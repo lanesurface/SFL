@@ -28,12 +28,19 @@ import java.nio.ByteBuffer;
 public abstract class Glyph {
     protected ByteBuffer buffer;
     protected Rectangle2D bounds;
-    protected final int offset;
+    protected final int offset,
+                        dotsPerInch,
+                        unitsPerEm;
     protected final short numContours;
     
-    protected Glyph(ByteBuffer buffer, int offset) {
+    protected Glyph(ByteBuffer buffer,
+                    int offset,
+                    int dotsPerInch,
+                    int unitsPerEm) {
         this.buffer = buffer;
         this.offset = offset;
+        this.dotsPerInch = dotsPerInch;
+        this.unitsPerEm = unitsPerEm;
         
         buffer.position(offset);
         numContours = buffer.getShort();
@@ -55,49 +62,33 @@ public abstract class Glyph {
      * Gets the outline of this glyph as a {@code Path2D} object which can be
      * rendered by a call to {@link Graphics2D#draw(java.awt.Shape)}. The path
      * which is returned is converted into device space (i.e. pixel
-     * coordinates) according to the parameters supplied to this method. The
-     * value of <code>dotsPerInch</code> can be obtained on a per-device basis
-     * with the {@code Toolkit} utility class. The <code>unitsPerEm</code> are
-     * defined in the header table for this font.
+     * coordinates) according to device-specific properties and the unit
+     * conversion factor determined by the font designer, using
+     * <code>pointSize</code> to determine the height of the glyph.
      * 
-     * @param dotsPerInch The resolution of the screen that this {@code Glyph}
-     *                    will be rendered to.
-     * @param unitsPerEm The granularity of the EM square which all coordinate
-     *                   data relative to. (The EM coordinate system chosen by
-     *                   the font designer.)
      * @param pointSize The size of the text that should be returned from this
      *                  method, where one point is equal to <code>1/72</code>
      *                  of an inch. (So a value of 72 here would cause the
      *                  glyph returned from this method to be rendered at a
      *                  size of one inch on the destination device.)
      * 
-     * @return A {@code Glyph} according to the specified parameters.
+     * @return A path for this glyph in device-space.
      */
-    public abstract Path2D getPath(int dotsPerInch,
-                                   int unitsPerEm,
-                                   int pointSize);
+    public abstract Path2D getPath(int pointSize);
     
     /**
      * A {@code SimpleGlyph} is a glyph which defines all of the contours
      * required for drawing it.
      */
     public static final class SimpleGlyph extends Glyph {
-        private enum Flag {
-            ON_CURVE_POINT,
-            X_SHORT_VECTOR,
-            Y_SHORT_VECTOR,
-            REPEAT_FLAG,
-            X_IS_SAME_OR_POSITIVE_X_SHORT_VECTOR,
-            Y_IS_SAME_OR_POSITIVE_Y_SHORT_VECTOR,
-            OVERLAP_SIMPLE;
-            
-            boolean instructing(byte flag) {
-                byte binPosition = (byte)Math.pow(2,
-                                                  ordinal());
-                
-                return (binPosition & flag) == binPosition;
-            }
-        }
+        // Flags
+        private static final byte ON_CURVE_POINT = 1 << 0,
+                                  X_SHORT_VECTOR = 1 << 1,
+                                  Y_SHORT_VECTOR = 1 << 2,
+                                  REPEAT  = 1 << 3,
+                                  X_DELTA = 1 << 4,
+                                  Y_DELTA = 1 << 5,
+                                  OVERLAP_SIMPLE = 1 << 6;
         
         private final short numCoordinates;
         private final short[] endPoints,
@@ -108,8 +99,9 @@ public abstract class Glyph {
         
         public SimpleGlyph(ByteBuffer buffer,
                            int offset,
-                           int dataRegionLength) {
-            super(buffer, offset);
+                           int dotsPerInch,
+                           int unitsPerEm) {
+            super(buffer, offset, dotsPerInch, unitsPerEm);
             
             int lo = buffer.position();
             endPoints = new short[numContours];
@@ -125,34 +117,31 @@ public abstract class Glyph {
                 byte flag = buffer.get();
                 flags[i] = flag;
                 
-                if (Flag.REPEAT_FLAG.instructing(flag)) {
+                if ((REPEAT & flag) > 0) {
                     byte n = buffer.get();
                     while (n-- > 0) flags[++i] = flag;
                 }
             }
             
-            xCoords = readCoordinates(Flag.X_SHORT_VECTOR,
-                                      Flag.X_IS_SAME_OR_POSITIVE_X_SHORT_VECTOR);
-            yCoords = readCoordinates(Flag.Y_SHORT_VECTOR,
-                                      Flag.Y_IS_SAME_OR_POSITIVE_Y_SHORT_VECTOR);
+            xCoords = readCoordinates(X_SHORT_VECTOR, X_DELTA);
+            yCoords = readCoordinates(Y_SHORT_VECTOR, Y_DELTA);
         }
         
-        private short[] readCoordinates(Flag shortVectorFlag,
-                                        Flag deltaFlag) {
+        private short[] readCoordinates(int shortVector,
+                                        int delta) {
             short[] coords = new short[numCoordinates];
+            
+            short val = 0;
             for (int i = 0; i < numCoordinates; i++) {
                 byte flag = flags[i];
-                if (shortVectorFlag.instructing(flag)) {
-                    byte val = buffer.get();
-                    if (deltaFlag.instructing(flag))
-                        coords[i] = val;
-                    else  coords[i] = (byte)-val;
-                    
-                    continue;
-                }
+                if ((shortVector & flag) > 0)
+                    val += buffer.get() * Math.pow(-1,
+                                                   ~((flag & delta)
+                                                    >> (int)Math.sqrt(delta)));
+                else if ((delta & ~flag) > 0)
+                    val += buffer.getShort();
                 
-                if (deltaFlag.instructing(flag)) coords[i] = coords[i - 1];
-                else coords[i] = buffer.getShort();
+                coords[i] = val;
             }
             
             return coords;
@@ -163,13 +152,11 @@ public abstract class Glyph {
         }
         
         @Override
-        public Path2D getPath(int dotsPerInch,
-                              int unitsPerEm,
-                              int pointSize) {
-            Path2D path = new Path2D.Float(Path2D.WIND_EVEN_ODD);
+        public Path2D getPath(int pointSize) {
+            Path2D path = new Path2D.Float(Path2D.WIND_NON_ZERO);
             
-            int prevX = 0,
-                prevY = 0,
+            int prevX = (int)bounds.getX(),
+                prevY = (int)bounds.getY(),
                 point = 0;
             for (int contour = 0; contour < endPoints.length; contour++) {
                 for (; point < endPoints[contour]; point++) {
@@ -184,16 +171,11 @@ public abstract class Glyph {
                         y = yCoords[point];
                     path.append(new Line2D.Float(prevX,
                                                  prevY,
-                                                 prevX + x,
-                                                 prevY + y), true);
+                                                 x,
+                                                 y), false);
                     prevX = x;
                     prevY = y;
                 }
-                
-//                path.append(new Line2D.Float(0.f,
-//                                             0.f,
-//                                             0.f,
-//                                             0.f), false);
             }
             
             // The conversion ratio for FUnit -> device space coordinates.

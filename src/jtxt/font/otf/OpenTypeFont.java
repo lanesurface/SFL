@@ -18,6 +18,7 @@ package jtxt.font.otf;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.geom.Path2D;
 import java.awt.image.RenderedImage;
 import java.nio.file.Paths;
@@ -82,7 +83,7 @@ public class OpenTypeFont {
                                                        "Windows",
                                                        "Fonts",
                                                        "CALIBRI.TTF"), null);
-        Path2D path = font.createTypeFace(72, 0).getGlyphPath('N',
+        Path2D path = font.createTypeFace(72, 0).getGlyphPath('M',
                                                               0);
         JFrame frame = new JFrame("Font test");
         frame.setSize(400, 400);
@@ -101,6 +102,9 @@ public class OpenTypeFont {
                                   0,
                                   width,
                                   height);
+                
+                graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                                          RenderingHints.VALUE_ANTIALIAS_ON);
                 
                 graphics.setColor(Color.WHITE);
                 graphics.translate(width / 2,

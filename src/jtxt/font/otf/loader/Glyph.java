@@ -175,10 +175,12 @@ public abstract class Glyph {
             short val = 0;
             for (int i = 0; i < numCoordinates; i++) {
                 byte flag = flags[i];
-                if ((shortVector & flag) > 0)
-                    val += buffer.get() * Math.pow(-1,
-                                                   ~((flag & delta)
-                                                    >> (int)Math.sqrt(delta)));
+                if ((shortVector & flag) > 0) {
+                    short sign = (short)Math.pow(-1,
+                                                 ~((flag & delta)
+                                                   >> (int)Math.sqrt(delta)));
+                    val += (buffer.get() & 0xFF) * sign;
+                }
                 else if ((delta & ~flag) > 0)
                     val += buffer.getShort();
                 
@@ -202,7 +204,7 @@ public abstract class Glyph {
                            last = start;
                 
                 path.moveTo(start.x, start.y);
-                for (; point < endPoints[contour]; point++) {
+                for (; point <= endPoints[contour]; point++) {
                     Coordinate curr = coords[point];
                     if (curr.onCurve()) {
                         if (last.onCurve()) path.lineTo(curr.x,
@@ -215,9 +217,8 @@ public abstract class Glyph {
                     else {
                         if (!last.onCurve()) path.quadTo(last.x,
                                                          last.y,
-                                                         (last.x + curr.x) / 2,
-                                                         (last.y + curr.y) / 2);
-                        
+                                                         (last.x + curr.x) / 2.d,
+                                                         (last.y + curr.y) / 2.d);
                     }
                     
                     last = curr;

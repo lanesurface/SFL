@@ -18,9 +18,6 @@ package jtxt.font.otf;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Rectangle;
-import java.awt.Toolkit;
-import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
 import java.awt.image.RenderedImage;
 import java.nio.file.Paths;
@@ -28,7 +25,6 @@ import java.nio.file.Paths;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 
-import jtxt.font.otf.loader.Glyph;
 import jtxt.font.otf.loader.OTFFileReader;
 
 /**
@@ -86,7 +82,7 @@ public class OpenTypeFont {
                                                        "Windows",
                                                        "Fonts",
                                                        "CALIBRI.TTF"), null);
-        Path2D path = font.createTypeFace(72, 0).getGlyphPath('R',
+        Path2D path = font.createTypeFace(72, 0).getGlyphPath('N',
                                                               0);
         JFrame frame = new JFrame("Font test");
         frame.setSize(400, 400);
@@ -109,10 +105,6 @@ public class OpenTypeFont {
                 graphics.setColor(Color.WHITE);
                 graphics.translate(width / 2,
                                    height / 2);
-                
-//                graphics.setTransform(AffineTransform.getQuadrantRotateInstance(2,
-//                                                                                0,
-//                                                                                0));
                 graphics.draw(path);
             }
         });

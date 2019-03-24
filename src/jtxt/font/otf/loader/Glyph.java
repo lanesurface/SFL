@@ -116,6 +116,14 @@ public abstract class Glyph {
             boolean onCurve() {
                 return (ON_CURVE_POINT & flag) > 0;
             }
+            
+            @Override
+            public String toString() {
+                return String.format("Coordinate: [flag=%s, x=%d, y=%d]%n",
+                                     Integer.toBinaryString(flag),
+                                     x,
+                                     y);
+            }
         }
         
         private final short numCoordinates;
@@ -188,51 +196,34 @@ public abstract class Glyph {
         public Path2D getPath(int pointSize) {
             Path2D path = new Path2D.Float(Path2D.WIND_NON_ZERO);
             
-            ArrayList<Coordinate> coordinates = new ArrayList<>(
-                Arrays.asList(coords)
-            );
             int point = 0;
-            for (int contour = 0;
-                 contour < endPoints.length;
-                 contour++)
-            {
-                for (; point < endPoints[contour]; point++) {        
-                    Coordinate curr = coordinates.get(point);
-                    
-                    if (point > 0) {
-                        Coordinate prev = coordinates.get(point - 1);
-                        
-                        /* 
-                         * Two subsequent on-curve points indicates a line
-                         * should be drawn.
-                         */
-                        if (prev.onCurve() && curr.onCurve()) {
-                            path.append(new Line2D.Float(prev.x,
-                                                         prev.y,
-                                                         curr.x,
-                                                         curr.y), true);
-                            continue;
-                        }
-                        
-                        if (!prev.onCurve() && !curr.onCurve()) {
-                            int ix = (prev.x + curr.x) / 2,
-                                iy = (prev.y + curr.y) / 2;
-                            Coordinate first = coordinates.get(point - 2),
-                                       interp = new Coordinate(ON_CURVE_POINT,
-                                                               ix,
-                                                               iy);
-                            coordinates.add(point, interp);
-                            
-                            path.append(new QuadCurve2D.Float(first.x,
-                                                              first.y,
-                                                              curr.x,
-                                                              curr.y,
-                                                              ix,
-                                                              iy), true);
-                            continue;
-                        }
+            for (int contour = 0; contour < endPoints.length; contour++) {
+                Coordinate start = coords[point],
+                           last = start;
+                
+                path.moveTo(start.x, start.y);
+                for (; point < endPoints[contour]; point++) {
+                    Coordinate curr = coords[point];
+                    if (curr.onCurve()) {
+                        if (last.onCurve()) path.lineTo(curr.x,
+                                                        curr.y);
+                        else path.quadTo(last.x,
+                                         last.y,
+                                         curr.x,
+                                         curr.y);
                     }
+                    else {
+                        if (!last.onCurve()) path.quadTo(last.x,
+                                                         last.y,
+                                                         (last.x + curr.x) / 2,
+                                                         (last.y + curr.y) / 2);
+                        
+                    }
+                    
+                    last = curr;
                 }
+                
+                path.closePath();
             }
             
             // The conversion ratio for FUnit -> device space coordinates.
@@ -242,7 +233,7 @@ public abstract class Glyph {
                          / unitsPerEm;
             return new Path2D.Float(path,
                                     AffineTransform.getScaleInstance(dsc,
-                                                                     dsc));
+                                                                     -dsc));
         }
     }
     

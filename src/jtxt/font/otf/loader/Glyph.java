@@ -17,13 +17,9 @@ package jtxt.font.otf.loader;
 
 import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
-import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
-import java.awt.geom.QuadCurve2D;
 import java.awt.geom.Rectangle2D;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
 
 /**
  * 
@@ -214,12 +210,11 @@ public abstract class Glyph {
                                          curr.x,
                                          curr.y);
                     }
-                    else {
-                        if (!last.onCurve()) path.quadTo(last.x,
-                                                         last.y,
-                                                         (last.x + curr.x) / 2.d,
-                                                         (last.y + curr.y) / 2.d);
-                    }
+                    else if (!last.onCurve())
+                        path.quadTo(last.x,
+                                    last.y,
+                                    (last.x + curr.x) / 2.d,
+                                    (last.y + curr.y) / 2.d);
                     
                     last = curr;
                 }

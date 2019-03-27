@@ -18,18 +18,14 @@ package jtxt.font.otf.loader;
 import static jtxt.font.otf.CharacterMapper.PLATFORM_WINDOWS;
 import static jtxt.font.otf.CharacterMapper.PLATFORM_WINDOWS_UNICODE_BMP;
 
-import java.awt.Toolkit;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import jtxt.font.otf.CharacterMapper;
 
@@ -37,160 +33,6 @@ import jtxt.font.otf.CharacterMapper;
  * 
  */
 public class OTFFileReader {
-    /**
-     * Contains information about a table in the font file. Namely, this class
-     * aids in mapping table tags to their location in memory.
-     */
-    static final class TableRecord {
-        final int offset;
-        final int length;
-        
-        public TableRecord(int offset, int length) {
-            this.offset = offset;
-            this.length = length;
-        }
-    }
-    
-    /* package-private */ static class DataConverter {
-        public static String getTagAsString(int tag) {
-            byte[] bytes = { (byte)(tag >> 24 & 0xFF),
-                             (byte)(tag >> 16 & 0xFF),
-                             (byte)(tag >> 8 & 0xFF),
-                             (byte)(tag & 0xFF) };
-            
-            return new String(bytes, Charset.forName("US-ASCII"));
-        }
-
-        public static float[] getF2Dot14(ByteBuffer source,
-                                         int offset,
-                                         int count) {
-            int bytesToRead = 2 * count;
-            byte[] data = new byte[bytesToRead];
-            source.get(data,
-                       offset,
-                       bytesToRead);
-
-            float[] nums = new float[count];
-            for (int n = 0; n < count; n++) {
-                int d1i = 2 * n,
-                          d2i = d1i + 1;
-                float sum = data[d1i] >> 6;
-                short decimal = (short)((data[d1i] & 0x3F)
-                                        << 8
-                                        ^ data[d2i]
-                                        & 0xFF);
-                for (int b = 1; b <= 14; b++)
-                    sum += ((decimal & 1 << 14 - b)
-                            >> 14
-                            - b) / Math.pow(2, b);
-
-                nums[n] = sum;
-            }
-
-            return nums;
-        }
-    }
-    
-    static class Table implements Iterable<Object> {
-        enum Type {
-            UINT8(8),
-            INT8(8),
-            UINT16(16),
-            INT16(16),
-            UINT24(24),
-            UINT32(32),
-            INT32(32),
-            FIXED(32),
-            FWORD(16),
-            UFWORD(16),
-            F2DOT14(16),
-            LONGDATETIME(64),
-            TAG(32),
-            OFFSET16(16),
-            OFFSET32(32);
-            
-            final int size;
-            
-            Type(int size) {
-                this.size = size;
-            }
-        }
-        
-        private ByteBuffer buffer;
-        private int offset;
-        private Type[] types;
-        
-        Table(ByteBuffer buffer,
-              int offset,
-              Type... types) {
-            this.buffer = buffer;
-            this.offset = offset;
-            this.types = types;
-        }
-        
-        @Override
-        public Iterator<Object> iterator() {
-            return new Iterator<Object>() {
-                private int i,
-                            lo;
-                
-                @Override
-                public boolean hasNext() {
-                    return i < types.length;
-                }
-                
-                @Override
-                public Object next() {
-                    Type type = types[i++];
-                    int len = type.size / 8;
-                    byte[] bytes = new byte[len];
-                    buffer.position(offset + lo);
-                    buffer.get(bytes);
-                    lo += len;
-                    
-                    switch (type) {
-                    case UINT8:
-                    case INT8:
-                        return new Byte(bytes[0]);
-                    case UINT16:
-                    case INT16:
-                        return new Short((short)(bytes[0]
-                                                 << 8
-                                                 ^ bytes[1]));
-                    case FIXED:
-                    case UINT32:
-                    case INT32:
-                        return new Integer((int)(bytes[0]
-                                                 << 24
-                                                 ^ bytes[1]
-                                                 << 16
-                                                 ^ bytes[2]
-                                                 << 8
-                                                 ^ bytes[3]));
-                    case LONGDATETIME: // NOT proper repr.
-                        return new Long((long)(bytes[0]
-                                               << 56
-                                               ^ bytes[1]
-                                               << 48
-                                               ^ bytes[2]
-                                               << 40
-                                               ^ bytes[3]
-                                               << 32
-                                               ^ bytes[4]
-                                               << 24
-                                               ^ bytes[5]
-                                               << 16
-                                               ^ bytes[6]
-                                               << 8
-                                               ^ bytes[7]));
-                    default:
-                        return null;
-                    }
-                }
-            };
-        }
-    }
-    
     /*
      * All of the tags which a table defined in the OTF specification may
      * take on. The name of the constant is the same as the hexadecimal
@@ -247,7 +89,59 @@ public class OTFFileReader {
                             vhea = 0x76_68_65_61,
                             vmtx = 0x76_6D_74_78;
     
-    private static final int TABLE_RECORD_OFFSET = 4 + 2 * 4;
+    /**
+     * Contains information about a table in the font file. Namely, this class
+     * aids in mapping table tags to their location in memory.
+     */
+    private static final class TableRecord {
+        final int offset;
+        final int length;
+        
+        TableRecord(int offset, int length) {
+            this.offset = offset;
+            this.length = length;
+        }
+    }
+    
+    /* package-private */ static class DataConverter {
+        public static String getTagAsString(int tag) {
+            byte[] bytes = { (byte)(tag >> 24 & 0xFF),
+                             (byte)(tag >> 16 & 0xFF),
+                             (byte)(tag >> 8 & 0xFF),
+                             (byte)(tag & 0xFF) };
+            
+            return new String(bytes, Charset.forName("US-ASCII"));
+        }
+
+        public static float[] getF2Dot14(ByteBuffer source,
+                                         int offset,
+                                         int count) {
+            int bytesToRead = 2 * count;
+            byte[] data = new byte[bytesToRead];
+            source.get(data,
+                       offset,
+                       bytesToRead);
+
+            float[] nums = new float[count];
+            for (int n = 0; n < count; n++) {
+                int d1i = 2 * n,
+                          d2i = d1i + 1;
+                float sum = data[d1i] >> 6;
+                short decimal = (short)((data[d1i] & 0x3F)
+                                        << 8
+                                        ^ data[d2i]
+                                        & 0xFF);
+                for (int b = 1; b <= 14; b++)
+                    sum += ((decimal & 1 << 14 - b)
+                            >> 14
+                            - b) / Math.pow(2, b);
+
+                nums[n] = sum;
+            }
+
+            return nums;
+        }
+    }
     
     /**
      * The buffer which contains all of the data that this font holds. This
@@ -264,6 +158,21 @@ public class OTFFileReader {
      */
     private Map<Integer, TableRecord> tables;
     
+    private CharacterMapper cmapper;
+    private final short unitsPerEm,
+                        flags,
+                        locaFormat,
+                        xMin,
+                        yMin,
+                        xMax,
+                        yMax;
+    private final int glyphOffset;
+    
+    /**
+     * Creates a new instance of a font file reader. The file which is passed
+     * to this constructor must contain valid data, according to the OpenType
+     * Font Specification as defined by Microsoft and Adobe.
+     */
     public OTFFileReader(File file) {
         try {
             RandomAccessFile raf = new RandomAccessFile(file, "r");
@@ -272,82 +181,20 @@ public class OTFFileReader {
                                           raf.length());
             raf.close();
         }
-        catch (IOException ioe) { /* ... */ }
+        catch (IOException ioe) {
+            /*
+             * A general IOException has been thrown, which indicates that the
+             * file is not on disk or could not be read.
+             */
+            throw new IllegalArgumentException("The provided file could not "
+                                               + "be read from disk.");
+        }
         
         tables = new HashMap<>();
         /* sfntVersion */ buffer.getInt();
         int numTables = buffer.getShort();
-        mapTableRecords(TABLE_RECORD_OFFSET,
-                        numTables);
-    }
-    
-    public Glyph getGlyph(char character, int features) {
-        CharacterMapper mapper = createCharacterMapper();
-        int offset = tables.get(glyf).offset + mapper.getGlyphOffset(character,
-                                                                     0);
-        int dpi = Toolkit.getDefaultToolkit().getScreenResolution();
         
-        return new Glyph.SimpleGlyph(buffer.duplicate(),
-                                     offset,
-                                     dpi,
-                                     2048);
-        
-    }
-    
-    public CharacterMapper createCharacterMapper() {
-        /* 
-         * TODO: Return a character mapper which supports the characteristics
-         *       of this font. (For example, a different character mapper will
-         *       need to be constructed if this font supports features and the
-         *       client requests that they be enabled.)
-         */
-        int offset = tables.get(cmap).offset,
-            locaOffset = tables.get(loca).offset;
-        
-        Table table = new Table(buffer,
-                                tables.get(head).offset,
-                                Table.Type.UINT16,
-                                Table.Type.UINT16,
-                                Table.Type.FIXED, // BAD
-                                Table.Type.UINT32,
-                                Table.Type.UINT32,
-                                Table.Type.UINT16,
-                                Table.Type.UINT16, // Units/EM
-                                Table.Type.LONGDATETIME,
-                                Table.Type.LONGDATETIME,
-                                Table.Type.INT16, // xMin
-                                Table.Type.INT16, // yMin
-                                Table.Type.INT16, // xMax
-                                Table.Type.INT16, // yMax
-                                Table.Type.UINT16,
-                                Table.Type.UINT16,
-                                Table.Type.INT16,
-                                Table.Type.INT16,
-                                Table.Type.INT16);
-        System.out.println("--- TABLE START ---");
-        table.forEach(System.out::println);
-        System.out.println("--- TABLE END ---");
-        
-        boolean useLongAddresses = buffer.getShort(tables.get(head).offset
-                                                   + 50) == 0 ? false : true;
-        int numGlyphs = buffer.getShort(tables.get(maxp).offset + 4);
-        
-        GlyphLocator locator = GlyphLocator.getInstance(buffer,
-                                                        locaOffset,
-                                                        numGlyphs,
-                                                        useLongAddresses);
-        
-        return new DefaultOTCMap(buffer.duplicate(),
-                                 offset,
-                                 PLATFORM_WINDOWS,
-                                 PLATFORM_WINDOWS_UNICODE_BMP,
-                                 locator);
-    }
-    
-    private TableRecord[] mapTableRecords(int offset, int numTables) {
-        TableRecord[] recordEntries = new TableRecord[numTables];
-        
-        buffer.position(offset);
+        buffer.position(4 + 2 * 4);
         for (int i = 0; i < numTables; i++) {
             /*
              * TAG      tag
@@ -358,30 +205,85 @@ public class OTFFileReader {
             int tag = (int)(buffer.getLong()
                             >> 32
                             & 0xFFFFFFFF);
-
+            
             tables.put(tag, new TableRecord(buffer.getInt(),
                                             buffer.getInt()));
         }
         
-        return recordEntries;
+        cmapper = createCharacterMapper(PLATFORM_WINDOWS,
+                                        PLATFORM_WINDOWS_UNICODE_BMP);
+        
+        // TODO: Initialize these variables.
+        glyphOffset = unitsPerEm
+                    = flags
+                    = locaFormat
+                    = xMin
+                    = yMin
+                    = xMax
+                    = yMax
+                    = 0;
     }
     
-    public static void main(String[] args)
-        throws URISyntaxException
-    {   
-        File file = new File(
-            ClassLoader.getSystemResource("CALIBRI.TTF")
-                       .toURI()
-        );
-        OTFFileReader otf = new OTFFileReader(file);
+    /**
+     * Locates, constructs, and scales the {@code Glyph} for the given
+     * character. The value of this character is interpreted in the format
+     * specified (and this is usually UTF-8), using the most significant bits
+     * of this value if not all are required.
+     * 
+     * @param character The value of the character which this Glyph should be
+     *                  created for.
+     * @param dpi The dots-per-inch (resolution) of the output device that the
+     *            Glyph will be scaled for. Displaying the returned Glyph on
+     *            any device different from the one specified will cause its
+     *            size to be skewed.
+     * @param features Features according to those defined by the Feature
+     *                 interface used for {@code Glyph} location and other
+     *                 glyph-specific and optional operations. This should be
+     *                 zero for now.
+     * 
+     * @return A {@code Glyph} which represents the value of the given
+     *         character.
+     */
+    public Glyph getGlyph(char character,
+                          int dpi,
+                          int features) {
+        int offset = glyphOffset + cmapper.getGlyphOffset(character,
+                                                          features);
         
-        String entries = otf.tables
-                            .keySet()
-                            .stream()
-                            .map(DataConverter::getTagAsString)
-                            .collect(Collectors.joining(", ",
-                                                        "Tables: <",
-                                                        ">"));
-        System.out.println(entries);
+        /*
+         * For now, return a SimpleGlyph in all cases. (This sometimes causes
+         * OutOfBoundsExceptions to be thrown when the requested Glyph is
+         * composite--in the future, this should be a call to a static factory
+         * method.
+         */
+        return new Glyph.SimpleGlyph(buffer.duplicate(),
+                                     offset,
+                                     dpi,
+                                     unitsPerEm);
+    }
+    
+    public CharacterMapper createCharacterMapper(int platform,
+                                                 int format) {
+        int offset = tables.get(cmap).offset,
+            locaOffset = tables.get(loca).offset;
+        
+        boolean useLongAddresses = buffer.getShort(getRecord(head).offset
+                                                   + 50) == 0 ? false : true;
+        int numGlyphs = buffer.getShort(tables.get(maxp).offset + 4);
+        
+        GlyphLocator locator = GlyphLocator.getInstance(buffer,
+                                                        locaOffset,
+                                                        numGlyphs,
+                                                        useLongAddresses);
+        
+        return new DefaultOTCMap(buffer.duplicate(),
+                                 offset,
+                                 platform,
+                                 format,
+                                 locator);
+    }
+    
+    TableRecord getRecord(int tag) {
+        return tables.get(tag);
     }
 }

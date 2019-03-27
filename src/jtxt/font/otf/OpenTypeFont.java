@@ -19,6 +19,7 @@ import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.Toolkit;
 import java.awt.geom.Path2D;
 import java.awt.image.RenderedImage;
 import java.nio.file.Paths;
@@ -32,13 +33,11 @@ import jtxt.font.otf.loader.OTFFileReader;
  * 
  */
 public class OpenTypeFont {
-    private CharacterMapper cmapper;
     private OTFFileReader fontFile;
     private final String name;
     
     public OpenTypeFont(java.nio.file.Path path, String name) {
         fontFile = new OTFFileReader(path.toFile());
-        cmapper = fontFile.createCharacterMapper();
         this.name = name;
     }
     
@@ -51,8 +50,9 @@ public class OpenTypeFont {
     public static class OpenTypeFace implements RasterFont,
                                                 VectorFont {
         private final OpenTypeFont masterFont;
-        private final int size;
-        private final int renderAttribs;
+        private final int size,
+                          renderAttribs,
+                          dpi;
         
         public OpenTypeFace(OpenTypeFont masterFont,
                             int size,
@@ -60,10 +60,12 @@ public class OpenTypeFont {
             this.masterFont = masterFont;
             this.size = size;
             this.renderAttribs = renderAttribs;
+            dpi = Toolkit.getDefaultToolkit().getScreenResolution();
         }
         
         public Path2D getGlyphPath(char character, int hints) {
             return masterFont.fontFile.getGlyph(character,
+                                                dpi,
                                                 0).getPath(size);
         }
         
@@ -82,8 +84,8 @@ public class OpenTypeFont {
         OpenTypeFont font = new OpenTypeFont(Paths.get("C:",
                                                        "Windows",
                                                        "Fonts",
-                                                       "CALIBRI.TTF"), null);
-        Path2D path = font.createTypeFace(72, 0).getGlyphPath('M',
+                                                       "TIMES.TTF"), null);
+        Path2D path = font.createTypeFace(72, 0).getGlyphPath('a',
                                                               0);
         JFrame frame = new JFrame("Font test");
         frame.setSize(400, 400);

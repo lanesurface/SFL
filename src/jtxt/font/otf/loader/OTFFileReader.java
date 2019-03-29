@@ -210,18 +210,20 @@ public class OTFFileReader {
                                             buffer.getInt()));
         }
         
-        cmapper = createCharacterMapper(PLATFORM_WINDOWS,
-                                        PLATFORM_WINDOWS_UNICODE_BMP);
+        buffer.position(getRecord(head).offset);
+        unitsPerEm = buffer.getShort(18);
+        locaFormat = buffer.getShort(50);
+        glyphOffset = getRecord(glyf).offset;
         
         // TODO: Initialize these variables.
-        glyphOffset = unitsPerEm
-                    = flags
-                    = locaFormat
-                    = xMin
-                    = yMin
-                    = xMax
-                    = yMax
-                    = 0;
+        flags = xMin
+              = yMin
+              = xMax
+              = yMax
+              = 0;
+        
+        cmapper = createCharacterMapper(PLATFORM_WINDOWS,
+                                        PLATFORM_WINDOWS_UNICODE_BMP);
     }
     
     /**
@@ -267,14 +269,15 @@ public class OTFFileReader {
         int offset = tables.get(cmap).offset,
             locaOffset = tables.get(loca).offset;
         
-        boolean useLongAddresses = buffer.getShort(getRecord(head).offset
-                                                   + 50) == 0 ? false : true;
         int numGlyphs = buffer.getShort(tables.get(maxp).offset + 4);
+        boolean longAddresses = locaFormat == 0
+                                ? false
+                                : true;
         
         GlyphLocator locator = GlyphLocator.getInstance(buffer,
                                                         locaOffset,
                                                         numGlyphs,
-                                                        useLongAddresses);
+                                                        longAddresses);
         
         return new DefaultOTCMap(buffer.duplicate(),
                                  offset,

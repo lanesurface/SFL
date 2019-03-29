@@ -15,11 +15,14 @@
  */
 package jtxt.font.otf;
 
+import static java.awt.geom.AffineTransform.getTranslateInstance;
+
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.Toolkit;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
 import java.awt.image.RenderedImage;
 import java.nio.file.Paths;
@@ -63,6 +66,27 @@ public class OpenTypeFont {
             dpi = Toolkit.getDefaultToolkit().getScreenResolution();
         }
         
+        public GlyphRenderer createGlyphRenderer(Graphics2D graphics) {
+            return new GlyphRenderer() {
+                @Override
+                public void drawGlyph(char character,
+                                      int x,
+                                      int y) {
+                    AffineTransform trans = getTranslateInstance(x,
+                                                                 y);
+                    Path2D path = getGlyphPath(character, 0);
+                    graphics.draw(trans.createTransformedShape(path));
+                }
+
+                @Override
+                public void drawString(String string,
+                                       int x,
+                                       int y) {
+                    // TODO
+                }
+            };
+        }
+        
         public Path2D getGlyphPath(char character, int hints) {
             return masterFont.fontFile.getGlyph(character,
                                                 dpi,
@@ -85,8 +109,7 @@ public class OpenTypeFont {
                                                        "Windows",
                                                        "Fonts",
                                                        "TIMES.TTF"), null);
-        Path2D path = font.createTypeFace(72, 0).getGlyphPath('a',
-                                                              0);
+        OpenTypeFace face = font.createTypeFace(72, 0);
         JFrame frame = new JFrame("Font test");
         frame.setSize(400, 400);
         frame.setVisible(true);
@@ -109,9 +132,10 @@ public class OpenTypeFont {
                                           RenderingHints.VALUE_ANTIALIAS_ON);
                 
                 graphics.setColor(Color.WHITE);
-                graphics.translate(width / 2,
-                                   height / 2);
-                graphics.draw(path);
+                GlyphRenderer renderer = face.createGlyphRenderer(graphics);
+                renderer.drawGlyph('a',
+                                   0,
+                                   0);
             }
         });
     }

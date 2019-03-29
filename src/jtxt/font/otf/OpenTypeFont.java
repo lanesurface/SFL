@@ -134,8 +134,8 @@ public class OpenTypeFont {
                 graphics.setColor(Color.WHITE);
                 GlyphRenderer renderer = face.createGlyphRenderer(graphics);
                 renderer.drawGlyph('a',
-                                   0,
-                                   0);
+                                   width / 2,
+                                   height / 2);
             }
         });
     }

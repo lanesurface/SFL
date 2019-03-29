@@ -210,9 +210,9 @@ public class OTFFileReader {
                                             buffer.getInt()));
         }
         
-        buffer.position(getRecord(head).offset);
-        unitsPerEm = buffer.getShort(18);
-        locaFormat = buffer.getShort(50);
+        int hoff = getRecord(head).offset;
+        unitsPerEm = buffer.getShort(hoff + 18);
+        locaFormat = buffer.getShort(hoff + 50);
         glyphOffset = getRecord(glyf).offset;
         
         // TODO: Initialize these variables.

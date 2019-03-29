@@ -30,6 +30,7 @@ import java.nio.file.Paths;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 
+import jtxt.font.otf.loader.Glyph;
 import jtxt.font.otf.loader.OTFFileReader;
 
 /**
@@ -72,17 +73,39 @@ public class OpenTypeFont {
                 public void drawGlyph(char character,
                                       int x,
                                       int y) {
-                    AffineTransform trans = getTranslateInstance(x,
-                                                                 y);
-                    Path2D path = getGlyphPath(character, 0);
-                    graphics.draw(trans.createTransformedShape(path));
+                    drawPath(getGlyphPath(character, 0),
+                             x,
+                             y);
                 }
 
                 @Override
                 public void drawString(String string,
                                        int x,
                                        int y) {
-                    // TODO
+                    /*
+                     * TODO: Reimplement when glyph metrics have been extracted
+                     *       from the font file.
+                     */
+                    
+                    int xOff = x;
+                    for (int i = 0; i < string.length(); i++) {
+                        Glyph g = masterFont.fontFile.getGlyph(string.charAt(i),
+                                                               dpi,
+                                                               size,
+                                                               0);
+                        drawPath(g.getPath(),
+                                 xOff,
+                                 y);
+                        xOff += g.getBounds().getWidth();
+                    }
+                }
+                
+                private void drawPath(Path2D path,
+                                      int x,
+                                      int y) {
+                    AffineTransform trans = getTranslateInstance(x,
+                                                                 y);
+                    graphics.draw(trans.createTransformedShape(path));
                 }
             };
         }
@@ -90,7 +113,8 @@ public class OpenTypeFont {
         public Path2D getGlyphPath(char character, int hints) {
             return masterFont.fontFile.getGlyph(character,
                                                 dpi,
-                                                0).getPath(size);
+                                                size,
+                                                0).getPath();
         }
         
         @Override
@@ -133,9 +157,9 @@ public class OpenTypeFont {
                 
                 graphics.setColor(Color.WHITE);
                 GlyphRenderer renderer = face.createGlyphRenderer(graphics);
-                renderer.drawGlyph('a',
-                                   width / 2,
-                                   height / 2);
+                renderer.drawString("Test",
+                                    0,
+                                    height / 2);
             }
         });
     }

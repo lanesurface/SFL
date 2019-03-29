@@ -248,6 +248,7 @@ public class OTFFileReader {
      */
     public Glyph getGlyph(char character,
                           int dpi,
+                          int size,
                           int features) {
         int offset = glyphOffset + cmapper.getGlyphOffset(character,
                                                           features);
@@ -261,7 +262,8 @@ public class OTFFileReader {
         return new Glyph.SimpleGlyph(buffer.duplicate(),
                                      offset,
                                      dpi,
-                                     unitsPerEm);
+                                     unitsPerEm,
+                                     size);
     }
     
     public CharacterMapper createCharacterMapper(int platform,

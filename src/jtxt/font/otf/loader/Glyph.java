@@ -16,6 +16,7 @@
 package jtxt.font.otf.loader;
 
 import java.awt.Graphics2D;
+import java.awt.Shape;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
@@ -29,17 +30,20 @@ public abstract class Glyph {
     protected Rectangle2D bounds;
     protected final int offset,
                         dotsPerInch,
-                        unitsPerEm;
+                        unitsPerEm,
+                        pointSize;
     protected final short numContours;
     
     protected Glyph(ByteBuffer buffer,
                     int offset,
                     int dotsPerInch,
-                    int unitsPerEm) {
+                    int unitsPerEm,
+                    int pointSize) {
         this.buffer = buffer;
         this.offset = offset;
         this.dotsPerInch = dotsPerInch;
         this.unitsPerEm = unitsPerEm;
+        this.pointSize = pointSize;
         
         buffer.position(offset);
         numContours = buffer.getShort();
@@ -54,7 +58,7 @@ public abstract class Glyph {
     }
     
     public Rectangle2D getBounds() {
-        return bounds;
+        return transformToDeviceSpace(bounds).getBounds2D();
     }
     
     /**
@@ -73,7 +77,18 @@ public abstract class Glyph {
      * 
      * @return A path for this glyph in device-space.
      */
-    public abstract Path2D getPath(int pointSize);
+    public abstract Path2D getPath();
+    
+    protected Path2D transformToDeviceSpace(Shape shape) {
+        // The conversion ratio for FUnit -> device space coordinates.
+        double dsc = dotsPerInch
+                     * (1 / 72.d)
+                     * pointSize
+                     / unitsPerEm;
+        AffineTransform trans = AffineTransform.getScaleInstance(dsc,
+                                                                 -dsc);
+        return (Path2D)trans.createTransformedShape(shape);
+    }
     
     /**
      * A {@code SimpleGlyph} is a glyph which defines all of the contours
@@ -131,8 +146,13 @@ public abstract class Glyph {
         public SimpleGlyph(ByteBuffer buffer,
                            int offset,
                            int dotsPerInch,
-                           int unitsPerEm) {
-            super(buffer, offset, dotsPerInch, unitsPerEm);
+                           int unitsPerEm,
+                           int pointSize) {
+            super(buffer,
+                  offset,
+                  dotsPerInch,
+                  unitsPerEm,
+                  pointSize);
             
             int lo = buffer.position();
             endPoints = new short[numContours];
@@ -191,7 +211,7 @@ public abstract class Glyph {
         }
         
         @Override
-        public Path2D getPath(int pointSize) {
+        public Path2D getPath() {
             Path2D path = new Path2D.Float(Path2D.WIND_NON_ZERO);
             
             int point = 0;
@@ -222,14 +242,7 @@ public abstract class Glyph {
                 path.closePath();
             }
             
-            // The conversion ratio for FUnit -> device space coordinates.
-            double dsc = dotsPerInch
-                         * (1 / 72.d)
-                         * pointSize
-                         / unitsPerEm;
-            return new Path2D.Float(path,
-                                    AffineTransform.getScaleInstance(dsc,
-                                                                     -dsc));
+            return transformToDeviceSpace(path);
         }
     }
     

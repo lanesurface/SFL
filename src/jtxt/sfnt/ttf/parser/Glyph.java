@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package jtxt.font.otf.loader;
+package jtxt.sfnt.ttf.parser;
 
 import java.awt.Graphics2D;
 import java.awt.Shape;
@@ -22,8 +22,17 @@ import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 import java.nio.ByteBuffer;
 
+import jtxt.sfnt.ttf.CharacterMapper;
+
 /**
+ * A {@code Glyph} is the representation of a character in a font. Characters
+ * define the function of a letter form, and then the character is indexed and
+ * located in the font file, where it is constructed from it's outline data
+ * here. Some Glyphs are a combination of two or more "Simple" glyphs. This
+ * allows for compact representations of outlines like accents.
  * 
+ * @see CharacterMapper
+ * @see GlyphLocator
  */
 public abstract class Glyph {
     protected ByteBuffer buffer;
@@ -58,7 +67,7 @@ public abstract class Glyph {
     }
     
     public Rectangle2D getBounds() {
-        return transformToDeviceSpace(bounds).getBounds2D();
+        return scale(bounds).getBounds2D();
     }
     
     /**
@@ -79,7 +88,16 @@ public abstract class Glyph {
      */
     public abstract Path2D getPath();
     
-    protected Path2D transformToDeviceSpace(Shape shape) {
+    /**
+     * Scales the given {@code Shape} from FUnit to device space coordinates.
+     * 
+     * @param shape The Shape to scale to device space.
+     * 
+     * @return A {@code Path2D} object which has been scaled using an affine
+     *         transformation, according to the DPI, UPEM, and point size
+     *         this Glyph was initialized with.
+     */
+    protected Path2D scale(Shape shape) {
         // The conversion ratio for FUnit -> device space coordinates.
         double dsc = dotsPerInch
                      * (1 / 72.d)
@@ -242,7 +260,7 @@ public abstract class Glyph {
                 path.closePath();
             }
             
-            return transformToDeviceSpace(path);
+            return scale(path);
         }
     }
     

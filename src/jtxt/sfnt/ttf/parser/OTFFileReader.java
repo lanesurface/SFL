@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package jtxt.font.otf.loader;
+package jtxt.sfnt.ttf.parser;
 
-import static jtxt.font.otf.CharacterMapper.PLATFORM_WINDOWS;
-import static jtxt.font.otf.CharacterMapper.PLATFORM_WINDOWS_UNICODE_BMP;
+import static jtxt.sfnt.ttf.CharacterMapper.PLATFORM_WINDOWS;
+import static jtxt.sfnt.ttf.CharacterMapper.PLATFORM_WINDOWS_UNICODE_BMP;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,7 +27,7 @@ import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 
-import jtxt.font.otf.CharacterMapper;
+import jtxt.sfnt.ttf.CharacterMapper;
 
 /**
  * 
@@ -89,20 +89,6 @@ public class OTFFileReader {
                             vhea = 0x76_68_65_61,
                             vmtx = 0x76_6D_74_78;
     
-    /**
-     * Contains information about a table in the font file. Namely, this class
-     * aids in mapping table tags to their location in memory.
-     */
-    private static final class TableRecord {
-        final int offset;
-        final int length;
-        
-        TableRecord(int offset, int length) {
-            this.offset = offset;
-            this.length = length;
-        }
-    }
-    
     /* package-private */ static class DataConverter {
         public static String getTagAsString(int tag) {
             byte[] bytes = { (byte)(tag >> 24 & 0xFF),
@@ -150,14 +136,7 @@ public class OTFFileReader {
      * which serves as their unique ID.
      */
     private ByteBuffer buffer;
-    
-    /**
-     * All of the tags which are in this font. Each tag corresponds to a
-     * respective {@code Table} in memory; a tag associates a specific Table's
-     * offset with a four-byte ASCII identifier.
-     */
-    private Map<Integer, TableRecord> tables;
-    
+    private Map<Integer, Integer> tables;
     private CharacterMapper cmapper;
     private final short unitsPerEm,
                         flags,
@@ -202,18 +181,18 @@ public class OTFFileReader {
              * OFFSET32 offset
              * UINT32   length 
              */
-            int tag = (int)(buffer.getLong()
-                            >> 32
-                            & 0xFFFFFFFF);
+            int tag = buffer.getInt();
+            /* checksum */ buffer.getInt();
             
-            tables.put(tag, new TableRecord(buffer.getInt(),
-                                            buffer.getInt()));
+            tables.put(tag, (int)(buffer.getLong()
+                                  >> 32
+                                  & 0xFFFFFFFF));
         }
         
-        int hoff = getRecord(head).offset;
+        int hoff = tables.get(head);
         unitsPerEm = buffer.getShort(hoff + 18);
         locaFormat = buffer.getShort(hoff + 50);
-        glyphOffset = getRecord(glyf).offset;
+        glyphOffset = tables.get(glyf);
         
         // TODO: Initialize these variables.
         flags = xMin
@@ -268,10 +247,10 @@ public class OTFFileReader {
     
     public CharacterMapper createCharacterMapper(int platform,
                                                  int format) {
-        int offset = tables.get(cmap).offset,
-            locaOffset = tables.get(loca).offset;
+        int offset = tables.get(cmap),
+            locaOffset = tables.get(loca);
         
-        int numGlyphs = buffer.getShort(tables.get(maxp).offset + 4);
+        int numGlyphs = buffer.getShort(tables.get(maxp) + 4);
         boolean longAddresses = locaFormat == 0
                                 ? false
                                 : true;
@@ -288,7 +267,22 @@ public class OTFFileReader {
                                  locator);
     }
     
-    TableRecord getRecord(int tag) {
-        return tables.get(tag);
+    /**
+     * Gets the {@code ByteBuffer} which backs this font file, where the
+     * position of the buffer which is returned is set to the position of the
+     * table in this font for the given tag. 
+     * 
+     * @param tag The integer value for the ASCII string which defines the
+     *            name of a table in this font. All table tags are defined as
+     *            static constants in this file.
+     * 
+     * @return A ByteBuffer positioned at the offset in this font for the tag
+     *         which was specified.
+     */
+    public ByteBuffer getBufferForTable(int tag) {
+        int offset = tables.get(tag);
+        
+        return (ByteBuffer)buffer.duplicate()
+                                 .position(offset);
     }
 }

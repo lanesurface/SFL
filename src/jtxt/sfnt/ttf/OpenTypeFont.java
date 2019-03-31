@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package jtxt.font.otf;
+package jtxt.sfnt.ttf;
 
 import static java.awt.geom.AffineTransform.getTranslateInstance;
 
@@ -30,8 +30,8 @@ import java.nio.file.Paths;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 
-import jtxt.font.otf.loader.Glyph;
-import jtxt.font.otf.loader.OTFFileReader;
+import jtxt.sfnt.ttf.parser.Glyph;
+import jtxt.sfnt.ttf.parser.OTFFileReader;
 
 /**
  * 
@@ -157,7 +157,7 @@ public class OpenTypeFont {
                 
                 graphics.setColor(Color.WHITE);
                 GlyphRenderer renderer = face.createGlyphRenderer(graphics);
-                renderer.drawString("Test",
+                renderer.drawString("ROOBY",
                                     0,
                                     height / 2);
             }

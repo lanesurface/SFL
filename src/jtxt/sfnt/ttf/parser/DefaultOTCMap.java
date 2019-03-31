@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package jtxt.font.otf.loader;
+package jtxt.sfnt.ttf.parser;
 
 import java.nio.ByteBuffer;
 import java.nio.ShortBuffer;
 
-import jtxt.font.otf.CharacterMapper;
+import jtxt.sfnt.ttf.CharacterMapper;
 
 /**
  * 

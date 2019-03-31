@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package jtxt.font.otf.loader;
+package jtxt.sfnt.ttf.parser;
 
 /**
  * Indicates that a encoding ID has been provided to a {@code CharacterMapper}

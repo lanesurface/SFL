@@ -245,6 +245,14 @@ public class OTFFileReader {
                                      size);
     }
     
+    public Metrics getMetrics(int ptSize,
+                              int dpi) {
+        return new Metrics(this,
+                           ptSize,
+                           unitsPerEm,
+                           dpi);
+    }
+    
     public CharacterMapper createCharacterMapper(int platform,
                                                  int format) {
         int offset = tables.get(cmap),

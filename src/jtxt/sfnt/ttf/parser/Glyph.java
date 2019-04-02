@@ -40,19 +40,22 @@ public abstract class Glyph {
     protected final int offset,
                         dotsPerInch,
                         unitsPerEm,
-                        pointSize;
+                        pointSize,
+                        id;
     protected final short numContours;
     
     protected Glyph(ByteBuffer buffer,
                     int offset,
                     int dotsPerInch,
                     int unitsPerEm,
-                    int pointSize) {
+                    int pointSize,
+                    int id) {
         this.buffer = buffer;
         this.offset = offset;
         this.dotsPerInch = dotsPerInch;
         this.unitsPerEm = unitsPerEm;
         this.pointSize = pointSize;
+        this.id = id;
         
         buffer.position(offset);
         numContours = buffer.getShort();
@@ -165,12 +168,14 @@ public abstract class Glyph {
                            int offset,
                            int dotsPerInch,
                            int unitsPerEm,
-                           int pointSize) {
+                           int pointSize,
+                           int id) {
             super(buffer,
                   offset,
                   dotsPerInch,
                   unitsPerEm,
-                  pointSize);
+                  pointSize,
+                  id);
             
             int lo = buffer.position();
             endPoints = new short[numContours];

@@ -31,6 +31,7 @@ import javax.swing.JComponent;
 import javax.swing.JFrame;
 
 import jtxt.sfnt.ttf.parser.Glyph;
+import jtxt.sfnt.ttf.parser.Metrics;
 import jtxt.sfnt.ttf.parser.OTFFileReader;
 
 /**
@@ -54,6 +55,7 @@ public class OpenTypeFont {
     public static class OpenTypeFace implements RasterFont,
                                                 VectorFont {
         private final OpenTypeFont masterFont;
+        private final Metrics metrics;
         private final int size,
                           renderAttribs,
                           dpi;
@@ -65,6 +67,8 @@ public class OpenTypeFont {
             this.size = size;
             this.renderAttribs = renderAttribs;
             dpi = Toolkit.getDefaultToolkit().getScreenResolution();
+            metrics = masterFont.fontFile.getMetrics(size,
+                                                     dpi);
         }
         
         public GlyphRenderer createGlyphRenderer(Graphics2D graphics) {
@@ -96,7 +100,7 @@ public class OpenTypeFont {
                         drawPath(g.getPath(),
                                  xOff,
                                  y);
-                        xOff += g.getBounds().getWidth();
+                        xOff += metrics.getAdvanceWidh(g);
                     }
                 }
                 

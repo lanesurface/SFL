@@ -33,38 +33,16 @@ import java.nio.ByteBuffer;
  * </p>
  */
 public class Metrics {
-    private final int ptSize,
-                      unitsPerEm,
-                      dpi;
-    private HMetricProvider hmtx;
-    
-    public Metrics(OTFFileReader reader,
-                   int ptSize,
-                   int unitsPerEm,
-                   int dpi) {
-        this.ptSize = ptSize;
-        this.unitsPerEm = unitsPerEm;
-        this.dpi = dpi;
-        
-        ByteBuffer hmBuffer = reader.getBufferForTable(OTFFileReader.hhea);
-        hmtx = new HMetricProvider(hmBuffer,
-                                   (short)0,
-                                   0);
-    }
-    
     private static class HMetricProvider {
         static final class HMetricEntry {
             public final short aw,
                                lsb;
-            
             
             public HMetricEntry(short aw,
                                 short lsb) {
                 this.aw = aw;
                 this.lsb = lsb;
             }
-            
-            // TODO: Other stuff?
         }
         
         private HMetricEntry[] entries;
@@ -84,9 +62,40 @@ public class Metrics {
                                               buffer.getShort());
             }
         }
+    }
+    
+    private final int ptSize,
+                      unitsPerEm,
+                      dpi;
+    private HMetricProvider hmtx;
+    
+    public Metrics(OTFFileReader reader,
+                   int ptSize,
+                   int unitsPerEm,
+                   int dpi) {
+        this.ptSize = ptSize;
+        this.unitsPerEm = unitsPerEm;
+        this.dpi = dpi;
         
-        HMetricEntry getHMetric(int glyphID) {
-            return entries[glyphID];
-        }
+        ByteBuffer hmBuffer = reader.getBufferForTable(OTFFileReader.hmtx);
+        hmtx = new HMetricProvider(hmBuffer,
+                                   (short)0,
+                                   0);
+    }
+    
+    public int getAdvanceWidh(Glyph glyph) {
+        return hmtx.entries[glyph.id].aw;
+    }
+    
+    public int getLeftSideBearing(Glyph glyph) {
+        return hmtx.entries[glyph.id].lsb;
+    }
+    
+    public int getRightSideBearing(Glyph glyph) {
+        HMetricProvider.HMetricEntry entry = hmtx.entries[glyph.id];
+        
+        return (int)(entry.aw
+                     - (entry.lsb
+                     + glyph.getBounds().getWidth()));
     }
 }

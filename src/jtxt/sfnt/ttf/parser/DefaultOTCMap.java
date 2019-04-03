@@ -202,7 +202,6 @@ public class DefaultOTCMap implements CharacterMapper {
     
     private EncodingRecord[] records;
     private GlyphIndexer indexer;
-    private GlyphLocator locator;
     
     /**
      * Creates and initializes the {@code CharacterMapper} for an OpenType
@@ -224,8 +223,7 @@ public class DefaultOTCMap implements CharacterMapper {
     /* package-private */ DefaultOTCMap(ByteBuffer buffer,
                                         int offset,
                                         int platformId,
-                                        int encodingId,
-                                        GlyphLocator locator) {
+                                        int encodingId) {
         if (platformId < 0 || platformId > 4)
             throw new IllegalArgumentException("Unsupported platform ID "
                                                + platformId);
@@ -233,7 +231,6 @@ public class DefaultOTCMap implements CharacterMapper {
         this.buffer = buffer;
         this.platformId = platformId;
         this.encodingId = encodingId;
-        this.locator = locator;
         
         buffer.position(offset);
         /* version */ buffer.getShort();
@@ -259,7 +256,7 @@ public class DefaultOTCMap implements CharacterMapper {
     }
     
     @Override
-    public int getGlyphOffset(int character, int features) {
-        return locator.getAddressOfId(indexer.getGlyphId(character));
+    public int getGlyphId(char character, int features) {
+        return indexer.getGlyphId(character);
     }
 }

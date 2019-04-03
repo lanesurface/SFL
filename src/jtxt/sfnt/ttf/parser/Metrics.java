@@ -81,6 +81,7 @@ public class Metrics {
         hmtx = new HMetricProvider(hmBuffer,
                                    (short)0,
                                    0);
+        // TODO: We need some sort of common interface for a scaler.
     }
     
     public int getAdvanceWidh(Glyph glyph) {

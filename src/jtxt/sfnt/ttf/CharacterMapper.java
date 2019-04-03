@@ -44,32 +44,15 @@ public interface CharacterMapper {
         PLATFORM_WINDOWS_UNICODE_FULL = 10;
 
     /**
-     * For the character given, this method will return the offset for the glyph
-     * in memory, using the character encoding scheme which has been specified
-     * to the mapper prior to an invocation of this method. The behavior for
-     * this method when a character encoding scheme has not been given is to
-     * treat the character as a 16 bit Unicode character. Characters which are
-     * not found within the subtable defined for the character encoding scheme
-     * (or if there exists no subtable in this font for that scheme) should
-     * return a glyph index of zero (0), as this should always map to the
-     * <code>.notdef</code> character in the font. (There is an exception to
-     * this rule when format fourteen is used; see the specification for more
-     * details.)
+     * For the given character, this method returns the ID used to locate that
+     * character in this font file.
      *
-     * @param character A character in the format which has been specified to
-     *                  the mapper prior to any invocation of this method. A
-     *                  character in a format requiring less that four bytes of
-     *                  memory should place these bytes in the most significant
-     *                  bits of the integer; this method relies on big-endian
-     *                  numbers.
+     * @param character The (Unicode) character to locate in this font.
      * @param features If the character mapper supports features, this field
      *                 may contain those which may be applied to the character.
      * 
-     * @return The offset of the character in the <code>glyf</code> table. This
-     *         offset is relative&mdash;it must be added to the offset of the
-     *         glyf table to find the absolute position of this character in
-     *         memory.
+     * @return The ID used to locate this character within the font.
      */
-    int getGlyphOffset(int character,
-                       int features);
+    int getGlyphId(char character,
+                   int features);
 }

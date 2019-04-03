@@ -129,15 +129,10 @@ public class OTFFileReader {
         }
     }
     
-    /**
-     * The buffer which contains all of the data that this font holds. This
-     * data is transformed into a more suitable format and packaged into
-     * {@code Table}s. These tables can be looked up with a {@code Tag},
-     * which serves as their unique ID.
-     */
     private ByteBuffer buffer;
     private Map<Integer, Integer> tables;
     private CharacterMapper cmapper;
+    private GlyphLocator locator;
     private final short unitsPerEm,
                         flags,
                         locaFormat,
@@ -194,15 +189,21 @@ public class OTFFileReader {
         locaFormat = buffer.getShort(hoff + 50);
         glyphOffset = tables.get(glyf);
         
+        locator = GlyphLocator.getInstance(buffer,
+                                           0,
+                                           0,  // numGlyphs
+                                           0); // useLongAddresses
+        cmapper = new DefaultOTCMap(buffer,
+                                    0,
+                                    PLATFORM_WINDOWS,
+                                    PLATFORM_WINDOWS_UNICODE_BMP);
+        
         // TODO: Initialize these variables.
         flags = xMin
               = yMin
               = xMax
               = yMax
               = 0;
-        
-        cmapper = createCharacterMapper(PLATFORM_WINDOWS,
-                                        PLATFORM_WINDOWS_UNICODE_BMP);
     }
     
     /**
@@ -229,8 +230,8 @@ public class OTFFileReader {
                           int dpi,
                           int size,
                           int features) {
-        int offset = glyphOffset + cmapper.getGlyphOffset(character,
-                                                          features);
+        int id = cmapper.getGlyphId(character, features),
+            offset = glyphOffset + locator.getAddressOfId(id);
         
         /*
          * For now, return a SimpleGlyph in all cases. (This sometimes causes
@@ -242,7 +243,8 @@ public class OTFFileReader {
                                      offset,
                                      dpi,
                                      unitsPerEm,
-                                     size);
+                                     size,
+                                     id);
     }
     
     public Metrics getMetrics(int ptSize,
@@ -255,24 +257,12 @@ public class OTFFileReader {
     
     public CharacterMapper createCharacterMapper(int platform,
                                                  int format) {
-        int offset = tables.get(cmap),
-            locaOffset = tables.get(loca);
-        
-        int numGlyphs = buffer.getShort(tables.get(maxp) + 4);
-        boolean longAddresses = locaFormat == 0
-                                ? false
-                                : true;
-        
-        GlyphLocator locator = GlyphLocator.getInstance(buffer,
-                                                        locaOffset,
-                                                        numGlyphs,
-                                                        longAddresses);
+        int offset = tables.get(cmap);
         
         return new DefaultOTCMap(buffer.duplicate(),
                                  offset,
                                  platform,
-                                 format,
-                                 locator);
+                                 format);
     }
     
     /**

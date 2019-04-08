@@ -84,7 +84,7 @@ public class Metrics {
         // TODO: We need some sort of common interface for a scaler.
     }
     
-    public int getAdvanceWidh(Glyph glyph) {
+    public int getAdvanceWidth(Glyph glyph) {
         return hmtx.entries[glyph.id].aw;
     }
     

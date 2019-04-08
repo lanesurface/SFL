@@ -142,11 +142,6 @@ public class OTFFileReader {
                         yMax;
     private final int glyphOffset;
     
-    /**
-     * Creates a new instance of a font file reader. The file which is passed
-     * to this constructor must contain valid data, according to the OpenType
-     * Font Specification as defined by Microsoft and Adobe.
-     */
     public OTFFileReader(File file) {
         try {
             RandomAccessFile raf = new RandomAccessFile(file, "r");
@@ -191,8 +186,8 @@ public class OTFFileReader {
         
         locator = GlyphLocator.getInstance(buffer,
                                            0,
-                                           0,  // numGlyphs
-                                           0); // useLongAddresses
+                                           0,      // numGlyphs
+                                           false); // useLongAddresses
         cmapper = new DefaultOTCMap(buffer,
                                     0,
                                     PLATFORM_WINDOWS,

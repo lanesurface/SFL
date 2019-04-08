@@ -86,11 +86,6 @@ public class OpenTypeFont {
                 public void drawString(String string,
                                        int x,
                                        int y) {
-                    /*
-                     * TODO: Reimplement when glyph metrics have been extracted
-                     *       from the font file.
-                     */
-                    
                     int xOff = x;
                     for (int i = 0; i < string.length(); i++) {
                         Glyph g = masterFont.fontFile.getGlyph(string.charAt(i),
@@ -100,7 +95,7 @@ public class OpenTypeFont {
                         drawPath(g.getPath(),
                                  xOff,
                                  y);
-                        xOff += metrics.getAdvanceWidh(g);
+                        xOff += metrics.getAdvanceWidth(g);
                     }
                 }
                 

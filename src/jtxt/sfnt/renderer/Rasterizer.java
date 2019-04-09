@@ -51,35 +51,70 @@ public class Rasterizer {
                           int xOff,
                           int yOff) {
         float[] coords = new float[6];
+        
+        float lastX = 0,
+              lastY = 0;
         while (!path.isDone()) {
             switch (path.currentSegment(coords)) {
             case PathIterator.SEG_MOVETO:
-                break;
-            case PathIterator.SEG_LINETO:
-                drawLine(0,
-                         0,
-                         0,
-                         0);
+                lastX = coords[0];
+                lastY = coords[1];
                 
                 break;
-            default:
+            case PathIterator.SEG_LINETO:
+                float currX = coords[0],
+                      currY = coords[1];
+                drawLine(lastX,
+                         lastY,
+                         coords[0],
+                         coords[1]);
+                
+                lastX = currX;
+                lastY = currY;
+                
+                break;
+            case PathIterator.SEG_QUADTO:
+                float ctrlX = coords[0],
+                      ctrlY = coords[1],
+                      endX = coords[2],
+                      endY = coords[3];
+                
+                /*
+                 * In the future, I will add the mechanism for subdivision of
+                 * these curves by this rasterization engine; for now, I will
+                 * assume the steepness of the curve is relatively consistent.
+                 */
+                drawQuadCurve(lastX,
+                              lastY,
+                              ctrlX,
+                              ctrlY,
+                              endX,
+                              endY,
+                              10);
+                
+                lastX = endX;
+                lastY = endY;
+                
+                break;
+            case PathIterator.SEG_CUBICTO:
+            case PathIterator.SEG_CLOSE:
                 break;
             }
         }
     }
     
-    private void drawLine(int x0,
-                          int y0,
-                          int x1,
-                          int y1) {
+    private void drawLine(float x0,
+                          float y0,
+                          float x1,
+                          float y1) {
         /*
          * Use a simple DDA method for computing the pixel coordinates of
          * this line.
          */
         
-        int dX = x1 - x0,
-            dY = y1 - y0,
-            steps = Math.max(Math.abs(dX), Math.abs(dY));
+        float dX = x1 - x0,
+              dY = y1 - y0,
+              steps = Math.max(Math.abs(dX), Math.abs(dY));
         
         double xDelta = dX / steps,
                yDelta = dY / steps;
@@ -87,5 +122,46 @@ public class Rasterizer {
             raster.setPixel((int)(x0 * xDelta),
                             (int)(y0 * yDelta),
                             new int[] { 0, 0, 0 });
+    }
+    
+    private void drawQuadCurve(float startX,
+                               float startY,
+                               float ctrlX,
+                               float ctrlY,
+                               float endX,
+                               float endY,
+                               int subdivisions) {
+        float lastX,
+              lastY;
+        
+        for (int t = 0; t < subdivisions; t++) {
+            float x = calcIntermediate(startX,
+                                       ctrlX,
+                                       endX,
+                                       t),
+                  y = calcIntermediate(startY,
+                                       ctrlY,
+                                       endY,
+                                       t);
+            
+            // TODO: Draw line from (lastX, lastY) to (x, y).
+        }
+    }
+    
+    private float calcIntermediate(float start,
+                                   float ctrl,
+                                   float end,
+                                   int t) {
+        /*
+         * Formula for intermediate point on quadratic Bézier curve is:
+         *   B(t) = (1 - t)^2 * P0
+         *          + 2(1 - t) * P1
+         *          + t^2 * P2
+         *   (where 0 <= t <= 1).
+         */
+        
+        return (float)(Math.pow(1 - t, 2) * start
+                       + 2 * (1 - t) * ctrl
+                       + Math.pow(t, 2) * end);
     }
 }

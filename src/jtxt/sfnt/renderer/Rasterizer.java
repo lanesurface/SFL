@@ -15,7 +15,11 @@
  */
 package jtxt.sfnt.renderer;
 
+import java.awt.color.ColorSpace;
 import java.awt.geom.PathIterator;
+import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.ComponentColorModel;
 import java.awt.image.DataBuffer;
 import java.awt.image.Raster;
 import java.awt.image.WritableRaster;
@@ -40,11 +44,22 @@ public class Rasterizer {
         this.width = width;
         this.height = height;
         this.aaMode = aaMode;
-        raster = Raster.createBandedRaster(DataBuffer.TYPE_INT,
+        raster = Raster.createPackedRaster(DataBuffer.TYPE_INT,
                                            width,
                                            height,
-                                           3,
+                                           4,
+                                           8,
                                            null);
+        clear();
+    }
+    
+    public void clear() {
+        for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
+                raster.setDataElements(x, y, new int[] { 255,
+                                                         255,
+                                                         255,
+                                                         255 });
     }
     
     public void rasterize(PathIterator path,
@@ -52,8 +67,10 @@ public class Rasterizer {
                           int yOff) {
         float[] coords = new float[6];
         
-        float lastX = 0,
-              lastY = 0;
+        float startX = xOff,
+              startY = yOff,
+              lastX = startX,
+              lastY = startY;
         while (!path.isDone()) {
             switch (path.currentSegment(coords)) {
             case PathIterator.SEG_MOVETO:
@@ -96,8 +113,20 @@ public class Rasterizer {
                 lastY = endY;
                 
                 break;
-            case PathIterator.SEG_CUBICTO:
+            case PathIterator.SEG_CUBICTO: break;
             case PathIterator.SEG_CLOSE:
+                drawLine(lastX,
+                         lastY,
+                         startX,
+                         startY);
+                
+                /*
+                 * Now that we've closed this Shape, the last coordinates are
+                 * obviously invalid; however, there should never be a case
+                 * where they are used after a SEG_CLOSE operation and a 
+                 * MOVE_TO does not follow.
+                 */
+                
                 break;
             }
         }
@@ -131,8 +160,8 @@ public class Rasterizer {
                                float endX,
                                float endY,
                                int subdivisions) {
-        float lastX,
-              lastY;
+        float lastX = startX,
+              lastY = startY;
         
         for (int t = 0; t < subdivisions; t++) {
             float x = calcIntermediate(startX,
@@ -144,7 +173,13 @@ public class Rasterizer {
                                        endY,
                                        t);
             
-            // TODO: Draw line from (lastX, lastY) to (x, y).
+            drawLine(lastX,
+                     lastY,
+                     x,
+                     y);
+            
+            lastX = x;
+            lastY = y;
         }
     }
     

@@ -15,11 +15,7 @@
  */
 package jtxt.sfnt.renderer;
 
-import java.awt.color.ColorSpace;
 import java.awt.geom.PathIterator;
-import java.awt.image.BufferedImage;
-import java.awt.image.ColorModel;
-import java.awt.image.ComponentColorModel;
 import java.awt.image.DataBuffer;
 import java.awt.image.Raster;
 import java.awt.image.WritableRaster;
@@ -113,7 +109,7 @@ public class Rasterizer {
                 lastY = endY;
                 
                 break;
-            case PathIterator.SEG_CUBICTO: break;
+            case PathIterator.SEG_CUBICTO: break; // TODO
             case PathIterator.SEG_CLOSE:
                 drawLine(lastX,
                          lastY,
@@ -144,13 +140,17 @@ public class Rasterizer {
         float dX = x1 - x0,
               dY = y1 - y0,
               steps = Math.max(Math.abs(dX), Math.abs(dY));
-        
         double xDelta = dX / steps,
                yDelta = dY / steps;
+        
+        int[] pixColor = new int[] { 0,
+                                     0,
+                                     0,
+                                     0 };
         for (int i = 0; i < steps; i++)
             raster.setPixel((int)(x0 * xDelta),
                             (int)(y0 * yDelta),
-                            new int[] { 0, 0, 0 });
+                            pixColor);
     }
     
     private void drawQuadCurve(float startX,
@@ -163,7 +163,8 @@ public class Rasterizer {
         float lastX = startX,
               lastY = startY;
         
-        for (int t = 0; t < subdivisions; t++) {
+        double ti = 1.d / subdivisions;
+        for (double t = 0.d; t <= 1; t += ti) {
             float x = calcIntermediate(startX,
                                        ctrlX,
                                        endX,
@@ -186,7 +187,7 @@ public class Rasterizer {
     private float calcIntermediate(float start,
                                    float ctrl,
                                    float end,
-                                   int t) {
+                                   double t) {
         /*
          * Formula for intermediate point on quadratic Bézier curve is:
          *   B(t) = (1 - t)^2 * P0

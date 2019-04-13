@@ -117,13 +117,13 @@ public abstract class Glyph {
      */
     public static final class SimpleGlyph extends Glyph {
         // Flags
-        private static final byte ON_CURVE_POINT = 1 << 0,
-                                  X_SHORT_VECTOR = 1 << 1,
-                                  Y_SHORT_VECTOR = 1 << 2,
-                                  REPEAT  = 1 << 3,
-                                  X_DELTA = 1 << 4,
-                                  Y_DELTA = 1 << 5,
-                                  OVERLAP_SIMPLE = 1 << 6;
+        private static final byte ON_CURVE_POINT = 0,
+                                  X_SHORT_VECTOR = 1 << 0,
+                                  Y_SHORT_VECTOR = 1 << 1,
+                                  REPEAT  = 1 << 2,
+                                  X_DELTA = 1 << 3,
+                                  Y_DELTA = 1 << 4,
+                                  OVERLAP_SIMPLE = 1 << 5;
         
         /**
          * A class which represents an (x,&nbsp;y) Cartesian coordinate and

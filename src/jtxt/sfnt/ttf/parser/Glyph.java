@@ -35,24 +35,13 @@ import java.nio.ByteBuffer;
 public abstract class Glyph {
     protected ByteBuffer buffer;
     protected Rectangle2D bounds;
-    protected final int offset,
-                        dotsPerInch,
-                        unitsPerEm,
-                        pointSize,
-                        id;
     protected final short numContours;
+    protected final int offset,
+                        id;
     
-    protected Glyph(ByteBuffer buffer,
-                    int offset,
-                    int dotsPerInch,
-                    int unitsPerEm,
-                    int pointSize,
-                    int id) {
+    protected Glyph(ByteBuffer buffer, int offset, int id) {
         this.buffer = buffer;
         this.offset = offset;
-        this.dotsPerInch = dotsPerInch;
-        this.unitsPerEm = unitsPerEm;
-        this.pointSize = pointSize;
         this.id = id;
         
         buffer.position(offset);
@@ -68,7 +57,7 @@ public abstract class Glyph {
     }
     
     public Rectangle2D getBounds() {
-        return scale(bounds).getBounds2D();
+        return bounds.getBounds2D();
     }
     
     /**
@@ -90,38 +79,18 @@ public abstract class Glyph {
     public abstract Path2D getPath();
     
     /**
-     * Scales the given {@code Shape} from FUnit to device space coordinates.
-     * 
-     * @param shape The Shape to scale to device space.
-     * 
-     * @return A {@code Path2D} object which has been scaled using an affine
-     *         transformation, according to the DPI, UPEM, and point size
-     *         this Glyph was initialized with.
-     */
-    protected Path2D scale(Shape shape) {
-        // The conversion ratio for FUnit -> device space coordinates.
-        double dsc = dotsPerInch
-                     * (1 / 72.d)
-                     * pointSize
-                     / unitsPerEm;
-        AffineTransform trans = AffineTransform.getScaleInstance(dsc,
-                                                                 -dsc);
-        return (Path2D)trans.createTransformedShape(shape);
-    }
-    
-    /**
      * A {@code SimpleGlyph} is a glyph which defines all of the contours
      * required for drawing it.
      */
     public static final class SimpleGlyph extends Glyph {
         // Flags
-        private static final byte ON_CURVE_POINT = 0,
-                                  X_SHORT_VECTOR = 1 << 0,
-                                  Y_SHORT_VECTOR = 1 << 1,
-                                  REPEAT  = 1 << 2,
-                                  X_DELTA = 1 << 3,
-                                  Y_DELTA = 1 << 4,
-                                  OVERLAP_SIMPLE = 1 << 5;
+        private static final byte ON_CURVE_POINT = 1,
+                                  X_SHORT_VECTOR = 1 << 1,
+                                  Y_SHORT_VECTOR = 1 << 2,
+                                  REPEAT  = 1 << 3,
+                                  X_DELTA = 1 << 4,
+                                  Y_DELTA = 1 << 5,
+                                  OVERLAP_SIMPLE = 1 << 6;
         
         /**
          * A class which represents an (x,&nbsp;y) Cartesian coordinate and
@@ -162,18 +131,8 @@ public abstract class Glyph {
         private final byte[] flags,
                              instructions;
         
-        public SimpleGlyph(ByteBuffer buffer,
-                           int offset,
-                           int dotsPerInch,
-                           int unitsPerEm,
-                           int pointSize,
-                           int id) {
-            super(buffer,
-                  offset,
-                  dotsPerInch,
-                  unitsPerEm,
-                  pointSize,
-                  id);
+        public SimpleGlyph(ByteBuffer buffer, int offset, int id) {
+            super(buffer, offset, id);
             
             int lo = buffer.position();
             endPoints = new short[numContours];
@@ -263,7 +222,7 @@ public abstract class Glyph {
                 path.closePath();
             }
             
-            return scale(path);
+            return path;
         }
     }
     

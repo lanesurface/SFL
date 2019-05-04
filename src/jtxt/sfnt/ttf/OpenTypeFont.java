@@ -56,6 +56,7 @@ public class OpenTypeFont {
                                                 VectorFont {
         private final OpenTypeFont masterFont;
         private final Metrics metrics;
+        private final GlyphScaler scaler;
         private final int size,
                           renderAttribs,
                           dpi;
@@ -69,49 +70,40 @@ public class OpenTypeFont {
             dpi = Toolkit.getDefaultToolkit().getScreenResolution();
             metrics = masterFont.fontFile.getMetrics(size,
                                                      dpi);
+            scaler = new GlyphScaler(dpi,
+                                     size,
+                                     masterFont.fontFile.getUPEM());
         }
         
         public GlyphRenderer createGlyphRenderer(Graphics2D graphics) {
             return new GlyphRenderer() {
                 @Override
-                public void drawGlyph(char character,
-                                      int x,
-                                      int y) {
-                    drawPath(getGlyphPath(character, 0), x, y);
+                public void drawGlyph(char character, int x, int y) {
+                    Glyph glyph = masterFont.fontFile.getGlyph(character);
+                    drawPath(scaler.scale(glyph), x, y);
                 }
 
                 @Override
-                public void drawString(String string,
-                                       int x,
-                                       int y) {
+                public void drawString(String string, int x, int y) {
                     int xOff = x;
                     for (int i = 0; i < string.length(); i++) {
-                        Glyph g = masterFont.fontFile.getGlyph(string.charAt(i),
-                                                               dpi,
-                                                               size,
-                                                               0);
-                        drawPath(g.getPath(), xOff, y);
-                        xOff += g.getBounds().getWidth();
+                        char chr = string.charAt(i);
+                        Glyph glyph = masterFont.fontFile.getGlyph(chr);
+                        drawPath(scaler.scale(glyph), xOff, y);
+                        xOff += scaler.scale(glyph.getBounds())
+                            .getBounds()
+                            .getWidth();
                         
 //                        xOff += metrics.getAdvanceWidth(g);
                     }
                 }
                 
-                private void drawPath(Path2D path,
-                                      int x,
-                                      int y) {
+                private void drawPath(Path2D path, int x, int y) {
                     AffineTransform trans = getTranslateInstance(x,
                                                                  y);
                     graphics.draw(trans.createTransformedShape(path));
                 }
             };
-        }
-        
-        public Path2D getGlyphPath(char character, int hints) {
-            return masterFont.fontFile.getGlyph(character,
-                                                dpi,
-                                                size,
-                                                0).getPath();
         }
         
         @Override

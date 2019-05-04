@@ -108,7 +108,7 @@ public class OTFFileReader {
             float[] nums = new float[count];
             for (int n = 0; n < count; n++) {
                 int d1i = 2 * n,
-                          d2i = d1i + 1;
+                    d2i = d1i + 1;
                 float sum = data[d1i] >> 6;
                 short decimal = (short)((data[d1i] & 0x3F)
                                         << 8
@@ -186,7 +186,7 @@ public class OTFFileReader {
         locator = GlyphLocator.getInstance(buffer.duplicate(),
                                            loff,
                                            numGlyphs,
-                                           false);
+                                           locaFormat == 1);
         cmapper = new CharacterMapper(buffer.duplicate(),
                                       tables.get(cmap),
                                       PLATFORM_WINDOWS,
@@ -201,29 +201,18 @@ public class OTFFileReader {
     }
     
     /**
-     * Locates, constructs, and scales the {@code Glyph} for the given
-     * character. The value of this character is interpreted in the format
-     * specified (and this is usually UTF-8), using the most significant bits
-     * of this value if not all are required.
+     * Locates and constructs the {@code Glyph} for the given character. The
+     * value of this character is interpreted in the format specified (usually
+     * UTF-8), using the most significant bits of this value if not all are
+     * required.
      * 
      * @param character The value of the character which this Glyph should be
      *                  created for.
-     * @param dpi The dots-per-inch (resolution) of the output device that the
-     *            Glyph will be scaled for. Displaying the returned Glyph on
-     *            any device different from the one specified will cause its
-     *            size to be skewed.
-     * @param features Features according to those defined by the Feature
-     *                 interface used for {@code Glyph} location and other
-     *                 glyph-specific and optional operations. This should be
-     *                 zero for now.
      * 
-     * @return A {@code Glyph} which represents the value of the given
-     *         character.
+     * @return A {@code Glyph} containing the outline and bounding information
+     *         for the specified character.
      */
-    public Glyph getGlyph(char character,
-                          int dpi,
-                          int size,
-                          int features) {
+    public Glyph getGlyph(char character) {
         int id = cmapper.getGlyphIndexer().getGlyphId(character),
             offset = goff + locator.getAddressOfId(id);
         
@@ -233,18 +222,12 @@ public class OTFFileReader {
          * composite--in the future, this should be a call to a static factory
          * method.
          */
-        return new Glyph.SimpleGlyph(buffer.duplicate(),
-                                     offset,
-                                     dpi,
-                                     unitsPerEm,
-                                     size,
-                                     id);
+        return new Glyph.SimpleGlyph(buffer.duplicate(), offset, id);
     }
     
-    public Metrics getMetrics(int ptSize,
-                              int dpi) {
+    public Metrics getMetrics(int pointSize, int dpi) {
         return new Metrics(this,
-                           ptSize,
+                           pointSize,
                            unitsPerEm,
                            dpi);
     }
@@ -264,7 +247,10 @@ public class OTFFileReader {
     public ByteBuffer getBufferForTable(int tag) {
         int offset = tables.get(tag);
         
-        return (ByteBuffer)buffer.duplicate()
-                                 .position(offset);
+        return (ByteBuffer)buffer.duplicate().position(offset);
+    }
+
+    public int getUPEM() {
+        return unitsPerEm;
     }
 }

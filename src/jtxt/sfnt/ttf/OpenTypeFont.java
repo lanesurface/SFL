@@ -77,9 +77,7 @@ public class OpenTypeFont {
                 public void drawGlyph(char character,
                                       int x,
                                       int y) {
-                    drawPath(getGlyphPath(character, 0),
-                             x,
-                             y);
+                    drawPath(getGlyphPath(character, 0), x, y);
                 }
 
                 @Override
@@ -92,10 +90,10 @@ public class OpenTypeFont {
                                                                dpi,
                                                                size,
                                                                0);
-                        drawPath(g.getPath(),
-                                 xOff,
-                                 y);
-                        xOff += metrics.getAdvanceWidth(g);
+                        drawPath(g.getPath(), xOff, y);
+                        xOff += g.getBounds().getWidth();
+                        
+//                        xOff += metrics.getAdvanceWidth(g);
                     }
                 }
                 
@@ -122,6 +120,7 @@ public class OpenTypeFont {
                                       int xPad,
                                       int yPad,
                                       int hints) {
+            // TODO
             
             return null;
         }

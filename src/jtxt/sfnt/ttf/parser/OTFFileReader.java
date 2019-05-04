@@ -15,9 +15,6 @@
  */
 package jtxt.sfnt.ttf.parser;
 
-import static jtxt.sfnt.ttf.CharacterMapper.PLATFORM_WINDOWS;
-import static jtxt.sfnt.ttf.CharacterMapper.PLATFORM_WINDOWS_UNICODE_BMP;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -27,7 +24,7 @@ import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 
-import jtxt.sfnt.ttf.CharacterMapper;
+import static jtxt.sfnt.ttf.parser.CharacterMapper.*;
 
 /**
  * 
@@ -140,7 +137,7 @@ public class OTFFileReader {
                         yMin,
                         xMax,
                         yMax;
-    private final int glyphOffset;
+    private final int goff;
     
     public OTFFileReader(File file) {
         try {
@@ -182,16 +179,18 @@ public class OTFFileReader {
         int hoff = tables.get(head);
         unitsPerEm = buffer.getShort(hoff + 18);
         locaFormat = buffer.getShort(hoff + 50);
-        glyphOffset = tables.get(glyf);
+        goff = tables.get(glyf);
         
-        locator = GlyphLocator.getInstance(buffer,
-                                           0,
-                                           0,      // numGlyphs
-                                           false); // useLongAddresses
-        cmapper = new DefaultOTCMap(buffer,
-                                    0,
-                                    PLATFORM_WINDOWS,
-                                    PLATFORM_WINDOWS_UNICODE_BMP);
+        int loff = tables.get(loca),
+            numGlyphs = buffer.getShort(tables.get(maxp) + 4);
+        locator = GlyphLocator.getInstance(buffer.duplicate(),
+                                           loff,
+                                           numGlyphs,
+                                           false);
+        cmapper = new CharacterMapper(buffer.duplicate(),
+                                      tables.get(cmap),
+                                      PLATFORM_WINDOWS,
+                                      PLATFORM_WINDOWS_UNICODE_BMP);
         
         // TODO: Initialize these variables.
         flags = xMin
@@ -225,8 +224,8 @@ public class OTFFileReader {
                           int dpi,
                           int size,
                           int features) {
-        int id = cmapper.getGlyphId(character, features),
-            offset = glyphOffset + locator.getAddressOfId(id);
+        int id = cmapper.getGlyphIndexer().getGlyphId(character),
+            offset = goff + locator.getAddressOfId(id);
         
         /*
          * For now, return a SimpleGlyph in all cases. (This sometimes causes
@@ -248,16 +247,6 @@ public class OTFFileReader {
                            ptSize,
                            unitsPerEm,
                            dpi);
-    }
-    
-    public CharacterMapper createCharacterMapper(int platform,
-                                                 int format) {
-        int offset = tables.get(cmap);
-        
-        return new DefaultOTCMap(buffer.duplicate(),
-                                 offset,
-                                 platform,
-                                 format);
     }
     
     /**

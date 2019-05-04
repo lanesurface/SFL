@@ -18,12 +18,22 @@ package jtxt.sfnt.ttf.parser;
 import java.nio.ByteBuffer;
 import java.nio.ShortBuffer;
 
-import jtxt.sfnt.ttf.CharacterMapper;
-
 /**
  * 
  */
-public class DefaultOTCMap implements CharacterMapper {
+public class CharacterMapper {
+    public static final int PLATFORM_UNICODE = 0,
+                            PLATFORM_OS_X = 1,
+                            PLATFORM_WINDOWS = 3,
+                            PLATFORM_CUSTOM = 4;
+    
+    // The subset of encodings which are supported by this character mapper.
+    public static final int PLATFORM_UNICODE_ID = 5,
+                            PLATFORM_OS_X_ID = 0,
+                            PLATFORM_WINDOWS_SYMBOL_ID = 0,
+                            PLATFORM_WINDOWS_UNICODE_BMP = 1,
+                            PLATFORM_WINDOWS_UNICODE_FULL = 10;
+    
     protected static final class EncodingRecord {
         public short platformId,
                      encodingId;
@@ -88,26 +98,6 @@ public class DefaultOTCMap implements CharacterMapper {
                                  encodingId,
                                  offset);
         }
-    }
-    
-    /**
-     * Determines the identifier for the given character. The ID returned by a
-     * {@code GlyphIndexer} can be used to lookup the address in the
-     * <code>loca</code> table.
-     */
-    @FunctionalInterface
-    protected static interface GlyphIndexer {
-        /**
-         * Finds the ID for the given glyph for the cmap subtable format which
-         * this {@code GlyphIndexer} has been constructed for.
-         * 
-         * @param character The character used to locate the ID returned by
-         *                  this method.
-         * 
-         * @return The ID for the given character, or zero if the character is
-         *         not contained within this mapping.
-         */
-        int getGlyphId(int character);
     }
     
     private static class ByteIndexer implements GlyphIndexer {
@@ -196,41 +186,19 @@ public class DefaultOTCMap implements CharacterMapper {
         }
     }
     
-    private final ByteBuffer buffer;
-    private final int platformId,
-                      encodingId;
-    
     private EncodingRecord[] records;
     private GlyphIndexer indexer;
     
     /**
-     * Creates and initializes the {@code CharacterMapper} for an OpenType
-     * font. The buffer should be the same buffer that the font was loaded from
-     * (i.e., the buffer returned from creating a new {@code OTFFileReader}).
-     * The offset should be the location which is given in the table records
-     * at the beginning of the font file. (This means that the offset is an
-     * absolute position in memory.) Platform and encoding IDs specify
-     * platform-specific behavior for this character mapper, according to the
-     * constraints given in the OpenType specification. The platforms and
-     * encodings supported by this character mapper are the constants which
-     * this file defines, prefixed with <code>PLATFORM_...</code>.
-     * 
-     * @param buffer
-     * @param offset
-     * @param platformId
-     * @param encodingId
+     * TODO: Update this documentation once the API is stable.
      */
-    /* package-private */ DefaultOTCMap(ByteBuffer buffer,
-                                        int offset,
-                                        int platformId,
-                                        int encodingId) {
+    /* package-private */ CharacterMapper(ByteBuffer buffer,
+                                          int offset,
+                                          int platformId,
+                                          int encodingId) {
         if (platformId < 0 || platformId > 4)
             throw new IllegalArgumentException("Unsupported platform ID "
                                                + platformId);
-        
-        this.buffer = buffer;
-        this.platformId = platformId;
-        this.encodingId = encodingId;
         
         buffer.position(offset);
         /* version */ buffer.getShort();
@@ -250,13 +218,12 @@ public class DefaultOTCMap implements CharacterMapper {
                                             buffer.getInt());
             
             if (pId == platformId && eId == encodingId)
-                indexer = EncodingRecord.createIndexer(buffer.duplicate(),
+                indexer = EncodingRecord.createIndexer(buffer,
                                                        offset + 4 + i * 8);
         }
     }
     
-    @Override
-    public int getGlyphId(char character, int features) {
-        return indexer.getGlyphId(character);
+    public GlyphIndexer getGlyphIndexer() {
+        return indexer;
     }
 }

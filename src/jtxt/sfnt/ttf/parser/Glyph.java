@@ -22,8 +22,6 @@ import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 import java.nio.ByteBuffer;
 
-import jtxt.sfnt.ttf.CharacterMapper;
-
 /**
  * A {@code Glyph} is the representation of a character in a font. Characters
  * define the function of a letter form, and then the character is indexed and

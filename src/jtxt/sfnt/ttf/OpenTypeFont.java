@@ -76,12 +76,11 @@ public class OpenTypeFont implements RasterFont, VectorFont {
 
             @Override
             public void draw(String string, int x, int y) {
-                int xOff = x;
                 for (int i = 0; i < string.length(); i++) {
                     char chr = string.charAt(i);
                     Glyph glyph = fontFile.getGlyph(chr);
-                    drawPath(scaler.scale(glyph), xOff, y);
-                    xOff += scaler.scale(glyph.getBounds())
+                    drawPath(scaler.scale(glyph), x, y);
+                    x += scaler.scale(glyph.getBounds())
                         .getBounds()
                         .getWidth();
                     
@@ -133,10 +132,11 @@ public class OpenTypeFont implements RasterFont, VectorFont {
                 
                 graphics.setColor(Color.BLACK);
                 GlyphRenderer renderer = font.createGlyphRenderer(graphics);
-                renderer.draw("This is a sentence rendered in my font " +
-                              "parser!",
-                              0,
-                              height / 2);
+//                renderer.draw("This is a sentence rendered in my font " +
+//                              "parser!",
+//                              0,
+//                              height / 2);
+                renderer.draw('\u00EE', 0, height / 2);
             }
         });
     }

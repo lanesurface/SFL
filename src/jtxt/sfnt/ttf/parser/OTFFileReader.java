@@ -216,13 +216,7 @@ public class OTFFileReader {
         int id = cmapper.getGlyphIndexer().getGlyphId(character),
             offset = goff + locator.getAddressOfId(id);
         
-        /*
-         * For now, return a SimpleGlyph in all cases. (This sometimes causes
-         * OutOfBoundsExceptions to be thrown when the requested Glyph is
-         * composite--in the future, this should be a call to a static factory
-         * method.
-         */
-        return new Glyph.SimpleGlyph(buffer.duplicate(), offset, id);
+        return Glyph.createGlyph(buffer.duplicate(), offset, id);
     }
     
     public Metrics getMetrics(int pointSize, int dpi) {

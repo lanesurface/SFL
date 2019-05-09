@@ -162,13 +162,14 @@ public class CharacterMapper {
             
             int s = 0;
             for (; s < segments; s++) {
+                /*
+                 * Check to see if the character we are searching for lies within the
+                 * range of one of the segments defined by this mapping.
+                 */
                 if (code <= endCodes[s]) {
                     if (code >= startCodes[s]) break;
                     
-                    /*
-                     * The given character is not in any of the segments
-                     * defined by this mapping.
-                     */
+                    // No mappings contain this character.
                     return 0;
                 }
             }

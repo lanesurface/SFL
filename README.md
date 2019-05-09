@@ -1,8 +1,8 @@
 ## SFnt Library
-The 'sfnt' format is a table-based font storage format originally defined by Apple
-for the Macintosh computer system and later extended by Microsoft and Adobe, 
-renamed OpenType, for the inclusion of advanced typographic features and support
-for CFF PostScript data. 
+The [SFNT](https://en.wikipedia.org/wiki/SFNT) format is a table-based font
+storage format originally defined by Apple for the Macintosh computer system
+and later extended by Microsoft and Adobe, renamed OpenType, for the inclusion
+of advanced typographic features and support for CFF PostScript data.
 
 This library aims to implement a parsing mechanism for SFNT data. The uses of this
 are similar to the popular FreeType library used by many devices to display

@@ -16,7 +16,6 @@
 package jtxt.sfnt.ttf.parser;
 
 import java.awt.Graphics2D;
-import java.awt.Shape;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
@@ -39,21 +38,43 @@ public abstract class Glyph {
     protected final int offset,
                         id;
     
-    protected Glyph(ByteBuffer buffer, int offset, int id) {
+    protected Glyph(ByteBuffer buffer,
+                    int offset,
+                    int id,
+                    short numContours,
+                    Rectangle2D bounds) {
         this.buffer = buffer;
         this.offset = offset;
         this.id = id;
-        
+        this.numContours = numContours;
+        this.bounds = bounds;
+    }
+    
+    public static Glyph createGlyph(ByteBuffer buffer,
+                                    int offset,
+                                    int id) {
         buffer.position(offset);
-        numContours = buffer.getShort();
+        short numContours = buffer.getShort();
         short xMin = buffer.getShort(),
               yMin = buffer.getShort(),
               xMax = buffer.getShort(),
               yMax = buffer.getShort();
-        bounds = new Rectangle2D.Float(xMin,
-                                       yMin,
-                                       xMax,
-                                       yMax);
+        Rectangle2D bounds = new Rectangle2D.Float(xMin,
+                                                   yMin,
+                                                   xMax,
+                                                   yMax);
+        if (numContours < 0)
+            return new CompositeGlyph(buffer,
+                                      offset,
+                                      id,
+                                      numContours,
+                                      bounds);
+        
+        return new SimpleGlyph(buffer,
+                               offset,
+                               id,
+                               numContours,
+                               bounds);
     }
     
     public Rectangle2D getBounds() {
@@ -131,8 +152,12 @@ public abstract class Glyph {
         private final byte[] flags,
                              instructions;
         
-        public SimpleGlyph(ByteBuffer buffer, int offset, int id) {
-            super(buffer, offset, id);
+        public SimpleGlyph(ByteBuffer buffer,
+                           int offset,
+                           int id,
+                           short numContours,
+                           Rectangle2D bounds) {
+            super(buffer, offset, id, numContours, bounds);
             
             int lo = buffer.position();
             endPoints = new short[numContours];
@@ -164,8 +189,7 @@ public abstract class Glyph {
                                            yCoords[i]);
         }
         
-        private short[] readCoordinates(int shortVector,
-                                        int delta) {
+        private short[] readCoordinates(int shortVector, int delta) {
             short[] coords = new short[numCoordinates];
             
             short val = 0;
@@ -226,5 +250,79 @@ public abstract class Glyph {
         }
     }
     
-    public static class CompositeGlyph { /* TODO */ }
+    public static class CompositeGlyph extends Glyph {
+        @SuppressWarnings("unused")
+        private static final short ARG_1_AND_2_ARE_WORDS = 1 << 0,
+                                   ARGS_ARE_XY_VALUES = 1 << 1,
+                                   ROUND_XY_TO_GRID = 1 << 2,
+                                   WE_HAVE_A_SCALE = 1 << 3,
+                                   MORE_COMPONENTS = 1 << 4,
+                                   WE_HAVE_AN_X_AND_Y_SCALE = 1 << 5,
+                                   WE_HAVE_A_TWO_BY_TWO = 1 << 6,
+                                   WE_HAVE_INSTRUCTIONS = 1 << 7,
+                                   USE_MY_METRICS = 1 << 8,
+                                   OVERLAP_COMPOUND = 1 << 9,
+                                   SCALED_COMPONENT_OFFSET = 1 << 10,
+                                   UNSCALED_COMPONENT_OFFSET = 1 << 11;
+        
+        private Path2D path;
+        
+        public CompositeGlyph(ByteBuffer buffer,
+                              int offset,
+                              int id,
+                              short numContours,
+                              Rectangle2D bounds) {
+            super(buffer, offset, id, numContours, bounds);
+            
+            int flag,
+                gind,
+                arg1,
+                arg2;
+            Path2D component;
+            AffineTransform at;
+            
+            do {
+                flag = buffer.getShort();
+                gind = buffer.getShort();
+                System.out.println(Integer.toHexString(flag));
+                
+                /*
+                 * `gind` is actually the id of the component glyph. These two
+                 * values are followed by the arguments and (sometimes)
+                 * transformation options.
+                 * 
+                 * We need a way to construct simple glyphs from their ids
+                 * from here, as the only way to do so now is to call the
+                 * locator from the file reader.
+                 */
+                
+                if ((flag & ARG_1_AND_2_ARE_WORDS) > 0) {
+                    arg1 = buffer.getShort();
+                    arg2 = buffer.getShort();
+                }
+                else {
+                    arg1 = buffer.get();
+                    arg2 = buffer.get();
+                }
+                
+                component = null; // TODO
+                
+                /*
+                 * The flags that should be ignored whenever parsing composite 
+                 * glyph data.
+                 */
+                if ((flag & (WE_HAVE_A_SCALE
+                             | WE_HAVE_AN_X_AND_Y_SCALE
+                             | WE_HAVE_A_TWO_BY_TWO)) > 0)
+                    continue;
+                
+                path.append(component, false);
+            } while ((flag & MORE_COMPONENTS) > 0);
+        }
+
+        @Override
+        public Path2D getPath() {
+            return path;
+        }
+    }
 }

@@ -16,21 +16,22 @@
 package jtxt.sfnt.ttf;
 
 /**
- * Defines how text processed by the font parser should ultimately be
- * rendered on the destination device. That is to say that properties of
- * rendering are defined by the implementation of this interface, including
- * such things as the anti-aliasing methods used to increase the legibility
- * of this rasterized image.
+ * Defines how text processed by the font parser should ultimately be rendered
+ * on the destination device. That is to say that properties of rendering are
+ * defined by the implementation of this interface, including such things as
+ * the anti-aliasing methods used to increase the legibility of this rasterized
+ * image.
  * 
- * <p>The type of rendering technology used, as well
- * as the methods taken to achieve the final product, are left up to the
- * client's discretion. The various graphics technologies make it difficult
- * to predict the best way to go about this. Preferences for rasterization
- * techniques also make the implementation a very personal choice. However,
- * the outline data can be easily rendered by the native Java2D
- * {@code Graphics2D} class if so desired, though the results are suboptimal
- * and you are certainly better off using the provided mechanism in that class
- * for rendering text instead.</p>
+ * <p>
+ * The type of rendering technology used, as well as the methods taken to
+ * achieve the final product, are left up to the client's discretion. The
+ * various graphics technologies make it difficult to predict the best way to
+ * go about this. Preferences for rasterization techniques also make the
+ * implementation a very personal choice. However, the outline data can be
+ * easily rendered by the native Java2D {@code Graphics2D} class if so desired,
+ * though the results are subpar and you are certainly better off using the
+ * provided mechanism in that class for rendering text instead.
+ * </p>
  */
 public interface GlyphRenderer {
     /**

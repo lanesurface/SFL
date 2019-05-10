@@ -224,7 +224,7 @@ public class CharacterMapper {
         }
     }
     
-    public GlyphIndexer getGlyphIndexer() {
-        return indexer;
+    public int findId(char character) {
+        return indexer.getGlyphId(character);
     }
 }

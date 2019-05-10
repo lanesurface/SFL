@@ -128,8 +128,7 @@ public class OTFFileReader {
     
     private ByteBuffer buffer;
     private Map<Integer, Integer> tables;
-    private CharacterMapper cmapper;
-    private GlyphLocator locator;
+    private AddressTranslator translator;
     private final short unitsPerEm,
                         flags,
                         locaFormat,
@@ -181,16 +180,13 @@ public class OTFFileReader {
         locaFormat = buffer.getShort(hoff + 50);
         goff = tables.get(glyf);
         
-        int loff = tables.get(loca),
-            numGlyphs = buffer.getShort(tables.get(maxp) + 4);
-        locator = GlyphLocator.getInstance(buffer.duplicate(),
-                                           loff,
+        int numGlyphs = buffer.getShort(tables.get(maxp) + 4);
+        translator = new AddressTranslator(buffer.duplicate(),
+                                           tables.get(loca),
+                                           tables.get(cmap),
+                                           tables.get(glyf),
                                            numGlyphs,
-                                           locaFormat == 1);
-        cmapper = new CharacterMapper(buffer.duplicate(),
-                                      tables.get(cmap),
-                                      PLATFORM_WINDOWS,
-                                      PLATFORM_WINDOWS_UNICODE_BMP);
+                                           locaFormat == 0);
         
         // TODO: Initialize these variables.
         flags = xMin
@@ -213,10 +209,10 @@ public class OTFFileReader {
      *         for the specified character.
      */
     public Glyph getGlyph(char character) {
-        int id = cmapper.getGlyphIndexer().getGlyphId(character),
-            offset = goff + locator.getAddressOfId(id);
-        
-        return Glyph.createGlyph(buffer.duplicate(), offset, id);
+        return Glyph.createGlyph(buffer.duplicate(),
+                                 translator.lookup(character),
+                                 0,
+                                 translator);
     }
     
     public Metrics getMetrics(int pointSize, int dpi) {

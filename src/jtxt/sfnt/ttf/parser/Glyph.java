@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
  * allows for compact representations of outlines like accents.
  * 
  * @see CharacterMapper
- * @see GlyphLocator
+ * @see AddressTranslator
  */
 public abstract class Glyph {
     protected ByteBuffer buffer;
@@ -52,7 +52,8 @@ public abstract class Glyph {
     
     public static Glyph createGlyph(ByteBuffer buffer,
                                     int offset,
-                                    int id) {
+                                    int id,
+                                    AddressTranslator translator) {
         buffer.position(offset);
         short numContours = buffer.getShort();
         short xMin = buffer.getShort(),
@@ -68,7 +69,8 @@ public abstract class Glyph {
                                       offset,
                                       id,
                                       numContours,
-                                      bounds);
+                                      bounds,
+                                      translator);
         
         return new SimpleGlyph(buffer,
                                offset,
@@ -252,7 +254,7 @@ public abstract class Glyph {
     
     public static class CompositeGlyph extends Glyph {
         @SuppressWarnings("unused")
-        private static final short ARG_1_AND_2_ARE_WORDS = 1 << 0,
+        private static final short ARG_1_AND_2_ARE_WORDS = 1,
                                    ARGS_ARE_XY_VALUES = 1 << 1,
                                    ROUND_XY_TO_GRID = 1 << 2,
                                    WE_HAVE_A_SCALE = 1 << 3,
@@ -271,29 +273,28 @@ public abstract class Glyph {
                               int offset,
                               int id,
                               short numContours,
-                              Rectangle2D bounds) {
+                              Rectangle2D bounds,
+                              AddressTranslator translator) {
             super(buffer, offset, id, numContours, bounds);
             
             int flag,
                 gind,
                 arg1,
-                arg2;
-            Path2D component;
+                arg2,
+                caddr;
+            Glyph component;
             AffineTransform at;
             
             do {
                 flag = buffer.getShort();
                 gind = buffer.getShort();
+                caddr = translator.lookupId(gind);
                 System.out.println(Integer.toHexString(flag));
                 
                 /*
                  * `gind` is actually the id of the component glyph. These two
                  * values are followed by the arguments and (sometimes)
                  * transformation options.
-                 * 
-                 * We need a way to construct simple glyphs from their ids
-                 * from here, as the only way to do so now is to call the
-                 * locator from the file reader.
                  */
                 
                 if ((flag & ARG_1_AND_2_ARE_WORDS) > 0) {
@@ -305,7 +306,10 @@ public abstract class Glyph {
                     arg2 = buffer.get();
                 }
                 
-                component = null; // TODO
+                component = Glyph.createGlyph(buffer.duplicate(),
+                                              caddr,
+                                              id,
+                                              translator);
                 
                 /*
                  * The flags that should be ignored whenever parsing composite 
@@ -316,7 +320,7 @@ public abstract class Glyph {
                              | WE_HAVE_A_TWO_BY_TWO)) > 0)
                     continue;
                 
-                path.append(component, false);
+                path.append(component.getPath(), false);
             } while ((flag & MORE_COMPONENTS) > 0);
         }
 

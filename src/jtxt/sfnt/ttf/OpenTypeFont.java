@@ -137,6 +137,7 @@ public class OpenTypeFont implements RasterFont, VectorFont {
 //                              0,
 //                              height / 2);
                 renderer.draw('\u00EE', 0, height / 2);
+//                renderer.draw('\u0131', 0, height / 2);
             }
         });
     }

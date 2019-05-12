@@ -58,12 +58,12 @@ public class AddressTranslator {
     }
     
     public int lookup(char character) {
-        return goff + lookupId(cmapper.findId(character));
+        return lookupId(cmapper.findId(character));
     }
     
     public int lookupId(int index) {
-        return (int)(addresses[index] * Math.pow(2, saddr
-                                                    ? 1
-                                                    : 0));
+        return goff + (int)(addresses[index] * Math.pow(2, saddr
+                                                           ? 1
+                                                           : 0));
     }
 }

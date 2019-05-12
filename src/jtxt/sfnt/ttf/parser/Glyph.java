@@ -291,12 +291,6 @@ public abstract class Glyph {
                 caddr = translator.lookupId(gind);
                 System.out.println(Integer.toHexString(flag));
                 
-                /*
-                 * `gind` is actually the id of the component glyph. These two
-                 * values are followed by the arguments and (sometimes)
-                 * transformation options.
-                 */
-                
                 if ((flag & ARG_1_AND_2_ARE_WORDS) > 0) {
                     arg1 = buffer.getShort();
                     arg2 = buffer.getShort();

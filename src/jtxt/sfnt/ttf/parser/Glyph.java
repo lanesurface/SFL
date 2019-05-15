@@ -276,6 +276,7 @@ public abstract class Glyph {
                               Rectangle2D bounds,
                               AddressTranslator translator) {
             super(buffer, offset, id, numContours, bounds);
+            path = new Path2D.Float(Path2D.WIND_NON_ZERO);
             
             int flag,
                 gind,

@@ -13,7 +13,7 @@ reliance on Java2D (and primarily the device-dependent `Graphics` implementation
 ### On the Use of this Library in Font Display Technologies
 Because rendering characteristics are so variable, and the facilities provided by
 Java are poorly equipped for this purpose, the actual implementation of a rasterizer
-has been left up to the client's disgression. That is to say that this library
+has been left up to the client's discretion. That is to say that this library
 primarily concerns itself with the extraction and interpretation of font data, not
 with the actual display of it. Though the outline data is quite complex in nature,
 the format in which it is stored after parsing should not be difficult to
